@@ -23,16 +23,20 @@ from dataset.cityscapes_dataset import cityscapesDataSet
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
 MODEL = 'DeepLab'
 BATCH_SIZE = 1
 ITER_SIZE = 1
 NUM_WORKERS = 4
 DATA_DIRECTORY = './data/GTA5'
-DATA_LIST_PATH = './dataset/gta5_list/train.txt'
+DATA_LIST_PATH = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/rgb_train_list.txt'
+DATA_LABEL_PATH = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/labels_train_list.txt'
 IGNORE_LABEL = 255
 INPUT_SIZE = '1280,720'
 DATA_DIRECTORY_TARGET = './data/Cityscapes/data'
-DATA_LIST_PATH_TARGET = './dataset/cityscapes_list/train.txt'
+DATA_LIST_PATH_TARGET = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/rgb_train_list.txt'
+DATA_LABELS_PATH_TARGET = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/labels_train_list.txt'
 INPUT_SIZE_TARGET = '1024,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
@@ -55,7 +59,6 @@ GAN = 'Vanilla'
 
 TARGET = 'cityscapes'
 SET = 'train'
-
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -202,7 +205,6 @@ def main():
 
     model.train()
     model.cuda(args.gpu)
-
     cudnn.benchmark = True
 
     # init D
@@ -219,18 +221,18 @@ def main():
         os.makedirs(args.snapshot_dir)
 
     trainloader = data.DataLoader(
-        GTA5DataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
+        GTA5DataSet(rgb_list=DATA_LIST_PATH_TARGET, labels_list=DATA_LABELS_PATH_TARGET,
+                    max_iters=args.num_steps * args.iter_size * args.batch_size,
                     crop_size=input_size,
                     scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN),
         batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
 
     trainloader_iter = enumerate(trainloader)
 
-    targetloader = data.DataLoader(cityscapesDataSet(args.data_dir_target, args.data_list_target,
+    targetloader = data.DataLoader(cityscapesDataSet(rgb_list=DATA_LIST_PATH, labels_list=DATA_LABEL_PATH,
                                                      max_iters=args.num_steps * args.iter_size * args.batch_size,
                                                      crop_size=input_size_target,
-                                                     scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
-                                                     set=args.set),
+                                                     scale=False, mirror=args.random_mirror, mean=IMG_MEAN),
                                    batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
 
@@ -400,14 +402,14 @@ def main():
             i_iter, args.num_steps, loss_seg_value1, loss_seg_value2, loss_adv_target_value1, loss_adv_target_value2, loss_D_value1, loss_D_value2))
 
         if i_iter >= args.num_steps_stop - 1:
-            print 'save model ...'
+            print('save model ...')
             torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(args.num_steps_stop) + '.pth'))
             torch.save(model_D1.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(args.num_steps_stop) + '_D1.pth'))
             torch.save(model_D2.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(args.num_steps_stop) + '_D2.pth'))
             break
 
         if i_iter % args.save_pred_every == 0 and i_iter != 0:
-            print 'taking snapshot ...'
+            print('taking snapshot ...')
             torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(i_iter) + '.pth'))
             torch.save(model_D1.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(i_iter) + '_D1.pth'))
             torch.save(model_D2.state_dict(), osp.join(args.snapshot_dir, 'GTA5_' + str(i_iter) + '_D2.pth'))
