@@ -1,4 +1,5 @@
 import argparse
+import torchvision
 import torch
 import torch.nn as nn
 from torch.utils import data, model_zoo
@@ -12,6 +13,7 @@ import torch.nn.functional as F
 import sys
 import os
 import os.path as osp
+from PIL import Image
 import matplotlib.pyplot as plt
 import random
 
@@ -20,6 +22,8 @@ from model.discriminator import FCDiscriminator
 from utils.loss import CrossEntropy2d
 from dataset.gta5_dataset import GTA5DataSet
 from dataset.cityscapes_dataset import cityscapesDataSet
+
+from torch.utils.tensorboard import SummaryWriter
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
@@ -33,11 +37,15 @@ DATA_DIRECTORY = './data/GTA5'
 DATA_LIST_PATH = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/rgb_train_list.txt'
 DATA_LABEL_PATH = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/labels_train_list.txt'
 IGNORE_LABEL = 255
-INPUT_SIZE = '1280,720'
+# INPUT_SIZE = '1280,720'
+# INPUT_SIZE = '640, 360'
+INPUT_SIZE = '384, 384'
 DATA_DIRECTORY_TARGET = './data/Cityscapes/data'
 DATA_LIST_PATH_TARGET = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/rgb_train_list.txt'
 DATA_LABELS_PATH_TARGET = '/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/labels_train_list.txt'
-INPUT_SIZE_TARGET = '1024,512'
+# INPUT_SIZE_TARGET = '1024,512'
+# INPUT_SIZE_TARGET = '512, 256'
+INPUT_SIZE_TARGET = '384, 384'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 19
@@ -48,8 +56,11 @@ RANDOM_SEED = 1234
 RESTORE_FROM = 'http://vllab.ucmerced.edu/ytsai/CVPR18/DeepLab_resnet_pretrained_init-f81d91e8.pth'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 5000
-SNAPSHOT_DIR = './snapshots/'
+EXP_NAME = 'AdaptSegNet_GTA2CITYSCAPES_384x384'
+SNAPSHOT_DIR = '/data/Akeaveny/weights/ARLGAN/AdaptSegNet/snapshots/' + EXP_NAME + '/'
 WEIGHT_DECAY = 0.0005
+
+TENSORBOARD_UPDATE = 500
 
 LEARNING_RATE_D = 1e-4
 LAMBDA_SEG = 0.1
@@ -172,6 +183,56 @@ def adjust_learning_rate_D(optimizer, i_iter):
     if len(optimizer.param_groups) > 1:
         optimizer.param_groups[1]['lr'] = lr * 10
 
+def color_map():
+    color_map_dic = {
+    0:  [0, 0, 0],
+    1:  [128, 128,   0],
+    2:  [  0, 128, 128],
+    3:  [128,   0, 128],
+    4:  [128,   0,   0],
+    5:  [  0, 128,   0],
+    6:  [  0,   0, 128],
+    7:  [255, 255,   0],
+    8:  [255,   0, 255],
+    9:  [  0, 255, 255],
+    10: [255,   0,   0],
+    11: [  0, 255,   0],
+    12: [  0,   0, 255],
+    13: [ 92,  112, 92],
+    14: [  0,   0,  70],
+    15: [  0,  60, 100],
+    16: [  0,  80, 100],
+    17: [  0,   0, 230],
+    18: [119,  11,  32],
+    19: [  0,   0, 121],
+    20: [44, 77, 62],
+    21: [128, 255, 128],
+    22: [256, 128, 128],
+    23: [128, 0, 255],
+    24: [128, 255, 0],
+    25: [0, 255, 0],
+    26: [0, 0, 255],
+    27: [255, 128, 0],
+    28: [128, 0, 255],
+    29: [128, 255, 255],
+    30: [128, 255, 0],
+    31: [0, 255, 128],
+    32: [128, 128, 255],
+    }
+    return color_map_dic
+
+def colorize_mask(instance_mask):
+
+    ########################
+    #  add color to masks
+    ########################
+    instance_to_color = color_map()
+    color_mask = np.zeros((instance_mask.shape[0], instance_mask.shape[1], 3), dtype=np.uint8)
+    for key in instance_to_color.keys():
+        color_mask[instance_mask == key] = instance_to_color[key]
+
+    return np.squeeze(color_mask)
+
 
 def main():
     """Create the model and start the training."""
@@ -220,12 +281,18 @@ def main():
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
 
+    ### TENSORBOARD
+    # writer = SummaryWriter(f'{args.snapshot_dir}', comment=f'_{EXP_NAME}')
+    writer = SummaryWriter(f'{args.snapshot_dir}')
+
     trainloader = data.DataLoader(
         GTA5DataSet(rgb_list=DATA_LIST_PATH_TARGET, labels_list=DATA_LABELS_PATH_TARGET,
                     max_iters=args.num_steps * args.iter_size * args.batch_size,
                     crop_size=input_size,
                     scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN),
         batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
+    print("GTA5 Dataset has: {}".format(len(trainloader)))
+    assert (len(trainloader) == NUM_STEPS)
 
     trainloader_iter = enumerate(trainloader)
 
@@ -235,7 +302,8 @@ def main():
                                                      scale=False, mirror=args.random_mirror, mean=IMG_MEAN),
                                    batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
-
+    print("Cityscapes Dataset has: {}".format(len(trainloader)))
+    assert (len(trainloader) == NUM_STEPS)
 
     targetloader_iter = enumerate(targetloader)
 
@@ -294,13 +362,34 @@ def main():
 
             # train with source
 
-            _, batch = trainloader_iter.next()
-            images, labels, _, _ = batch
+            _, batch = trainloader_iter.__next__()
+            images, labels = batch
             images = Variable(images).cuda(args.gpu)
 
             pred1, pred2 = model(images)
             pred1 = interp(pred1)
             pred2 = interp(pred2)
+
+            if i_iter != 0 and i_iter % TENSORBOARD_UPDATE == 0:
+                ### TENSORBOARD
+                ### gt
+                gt = labels.cpu().detach().squeeze()
+                gt = np.array(gt, dtype=np.int8)
+                # gt = gt[np.newaxis, np.newaxis, :, :]
+                gt = colorize_mask(gt)
+                gt = np.transpose(gt, (2, 0, 1))
+                gt = gt[np.newaxis, :, :, :]
+                writer.add_images('source/gt_mask', gt, i_iter)
+                ### pred
+                pred = pred2.clone().cpu().detach().squeeze()
+                pred = np.array(pred, dtype=np.int8)
+                pred = np.transpose(pred, (1, 2, 0))
+                pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
+                # pred = pred[np.newaxis, np.newaxis, :, :]
+                pred = colorize_mask(pred)
+                pred = np.transpose(pred, (2, 0, 1))
+                pred = pred[np.newaxis, :, :, :]
+                writer.add_images('source/pred_mask', pred, i_iter)
 
             loss_seg1 = loss_calc(pred1, labels, args.gpu)
             loss_seg2 = loss_calc(pred2, labels, args.gpu)
@@ -309,18 +398,44 @@ def main():
             # proper normalization
             loss = loss / args.iter_size
             loss.backward()
-            loss_seg_value1 += loss_seg1.data.cpu().numpy()[0] / args.iter_size
-            loss_seg_value2 += loss_seg2.data.cpu().numpy()[0] / args.iter_size
+            loss_seg_value1 += loss_seg1.data.cpu().numpy() / args.iter_size
+            loss_seg_value2 += loss_seg2.data.cpu().numpy() / args.iter_size
+
+            ### TENSORBOARD
+            writer.add_scalar('Loss/train', loss_seg_value1 + loss_seg_value2, i_iter)
+            writer.add_scalar('Loss/seg_loss1', loss_seg_value1, i_iter)
+            writer.add_scalar('Loss/seg_loss2', loss_seg_value2, i_iter)
 
             # train with target
 
-            _, batch = targetloader_iter.next()
-            images, _, _ = batch
+            _, batch = targetloader_iter.__next__()
+            images, labels, = batch
             images = Variable(images).cuda(args.gpu)
 
             pred_target1, pred_target2 = model(images)
             pred_target1 = interp_target(pred_target1)
             pred_target2 = interp_target(pred_target2)
+
+            if i_iter != 0 and i_iter % TENSORBOARD_UPDATE == 0:
+                ### TENSORBOARD
+                ### gt
+                gt = labels.cpu().detach().squeeze()
+                gt = np.array(gt, dtype=np.int8)
+                # gt = gt[np.newaxis, np.newaxis, :, :]
+                gt = colorize_mask(gt)
+                gt = np.transpose(gt, (2, 0, 1))
+                gt = gt[np.newaxis, :, :, :]
+                writer.add_images('target/gt_mask', gt, i_iter)
+                ### pred
+                pred = pred_target2.clone().cpu().detach().squeeze()
+                pred = np.array(pred, dtype=np.int8)
+                pred = np.transpose(pred, (1, 2, 0))
+                pred = np.asarray(np.argmax(pred, axis=2), dtype=np.uint8)
+                # pred = pred[np.newaxis, np.newaxis, :, :]
+                pred = colorize_mask(pred)
+                pred = np.transpose(pred, (2, 0, 1))
+                pred = pred[np.newaxis, :, :, :]
+                writer.add_images('target/pred_mask', pred, i_iter)
 
             D_out1 = model_D1(F.softmax(pred_target1))
             D_out2 = model_D2(F.softmax(pred_target2))
@@ -336,8 +451,13 @@ def main():
             loss = args.lambda_adv_target1 * loss_adv_target1 + args.lambda_adv_target2 * loss_adv_target2
             loss = loss / args.iter_size
             loss.backward()
-            loss_adv_target_value1 += loss_adv_target1.data.cpu().numpy()[0] / args.iter_size
-            loss_adv_target_value2 += loss_adv_target2.data.cpu().numpy()[0] / args.iter_size
+            loss_adv_target_value1 += loss_adv_target1.data.cpu().numpy() / args.iter_size
+            loss_adv_target_value2 += loss_adv_target2.data.cpu().numpy() / args.iter_size
+
+            ### TENSORBOARD
+            writer.add_scalar('Adv_Loss/Adv', loss_adv_target_value1 + loss_adv_target_value2, i_iter)
+            writer.add_scalar('Adv_Loss/seg_adv_loss1', loss_adv_target_value1, i_iter)
+            writer.add_scalar('Adv_Loss/seg_adv_loss2', loss_adv_target_value2, i_iter)
 
             # train D
 
@@ -367,8 +487,8 @@ def main():
             loss_D1.backward()
             loss_D2.backward()
 
-            loss_D_value1 += loss_D1.data.cpu().numpy()[0]
-            loss_D_value2 += loss_D2.data.cpu().numpy()[0]
+            loss_D_value1 += loss_D1.data.cpu().numpy()
+            loss_D_value2 += loss_D2.data.cpu().numpy()
 
             # train with target
             pred_target1 = pred_target1.detach()
@@ -389,17 +509,59 @@ def main():
             loss_D1.backward()
             loss_D2.backward()
 
-            loss_D_value1 += loss_D1.data.cpu().numpy()[0]
-            loss_D_value2 += loss_D2.data.cpu().numpy()[0]
+            loss_D_value1 += loss_D1.data.cpu().numpy()
+            loss_D_value2 += loss_D2.data.cpu().numpy()
+
+            ## TENSORBOARD
+            writer.add_scalar('Adv_Loss/Discriminator_1', loss_D_value1, i_iter)
+            writer.add_scalar('Adv_Loss/Discriminator_2', loss_D_value2, i_iter)
 
         optimizer.step()
         optimizer_D1.step()
         optimizer_D2.step()
 
         print('exp = {}'.format(args.snapshot_dir))
-        print(
-        'iter = {0:8d}/{1:8d}, loss_seg1 = {2:.3f} loss_seg2 = {3:.3f} loss_adv1 = {4:.3f}, loss_adv2 = {5:.3f} loss_D1 = {6:.3f} loss_D2 = {7:.3f}'.format(
+        print('iter = {0:8d}/{1:8d}, loss_seg1 = {2:.3f} loss_seg2 = {3:.3f} loss_adv1 = {4:.3f}, loss_adv2 = {5:.3f} loss_D1 = {6:.3f} loss_D2 = {7:.3f}'.format(
             i_iter, args.num_steps, loss_seg_value1, loss_seg_value2, loss_adv_target_value1, loss_adv_target_value2, loss_D_value1, loss_D_value2))
+
+        ## TENSORBOARD
+        writer.add_scalar('learning_rate/seg', optimizer.param_groups[0]['lr'], i_iter)
+        writer.add_scalar('learning_rate/dis1', optimizer_D1.param_groups[0]['lr'], i_iter)
+        writer.add_scalar('learning_rate/dis2', optimizer_D1.param_groups[0]['lr'], i_iter)
+        # hist and dist
+        if i_iter != 0 and i_iter % TENSORBOARD_UPDATE == 0:
+            # segmentation
+            for tag, value in model.named_parameters():
+                tag = tag.replace('.', '/')
+                if value.grad is None:
+                    # print('Seg_Layer: ', tag.split('/'))
+                    writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), i_iter)
+                    pass
+                else:
+                    writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), i_iter)
+                    writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), i_iter)
+
+            # discriminator 1
+            for tag, value in model_D1.named_parameters():
+                tag = tag.replace('.', '/')
+                if value.grad is None:
+                    # print('Dis1_Layer: ', tag.split('/'))
+                    writer.add_histogram('dis_weights1/' + tag, value.data.cpu().numpy(), i_iter)
+                    pass
+                else:
+                    writer.add_histogram('dis_weights1/' + tag, value.data.cpu().numpy(), i_iter)
+                    writer.add_histogram('dis_grads1/' + tag, value.grad.data.cpu().numpy(), i_iter)
+
+            # discriminator 2
+            for tag, value in model_D2.named_parameters():
+                tag = tag.replace('.', '/')
+                if value.grad is None:
+                    # print('Dis2_Layer: ', tag.split('/'))
+                    writer.add_histogram('dis_weights2/' + tag, value.data.cpu().numpy(), i_iter)
+                    pass
+                else:
+                    writer.add_histogram('dis_weights2/' + tag, value.data.cpu().numpy(), i_iter)
+                    writer.add_histogram('dis_grads2/' + tag, value.grad.data.cpu().numpy(), i_iter)
 
         if i_iter >= args.num_steps_stop - 1:
             print('save model ...')

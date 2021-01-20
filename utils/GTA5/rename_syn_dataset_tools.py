@@ -12,13 +12,15 @@ import matplotlib.pyplot as plt
 ########################
 ########################
 data_path = '/data/Akeaveny/Datasets/domain_adaptation/GTA5/'
-new_data_path = '/data/Akeaveny/Datasets/domain_adaptation/ARLGAN/GTA5/'
+new_data_path = '/data/Akeaveny/Datasets/domain_adaptation/ARLGAN/GTA5_3x_real/'
 
 splits = ['']
 
 image_exts = [
     '.png',
 ]
+
+NUM_IMAGES = 3*2975 #### CityScapes has 2975 images
 
 ########################
 ########################
@@ -31,6 +33,10 @@ for split in splits:
         files = np.array(sorted(glob.glob(file_path)))
         print("Loaded files: ", len(files))
 
+        train_idx = np.random.choice(np.arange(0, len(files), 1), size=int(NUM_IMAGES), replace=False)
+        print("Chosen Files ", len(train_idx))
+        files = files[train_idx]
+
         ###################
         ###################
 
@@ -40,28 +46,28 @@ for split in splits:
 
             count = 1000000 + offset + idx
             image_num = str(count)[1:]
-            print(f'\nImage num {image_num}')
+            # print(f'\nImage num {image_num}')
 
             if image_ext == '.png':
                 move_file_name = folder_to_move + 'rgb/' + np.str(image_num) + '.png'
-                print(f'Old file: {old_file_name}')
-                print(f'New file: {move_file_name}')
+                # print(f'Old file: {old_file_name}')
+                # print(f'New file: {move_file_name}')
                 shutil.copyfile(old_file_name, move_file_name)
 
             # if image_ext == '.png':
             #     move_file_name = folder_to_move + 'masks/' + np.str(image_num) + '_label.png'
-            #     print(f'Old file: {old_file_name}')
-            #     print(f'New file: {move_file_name}')
+            #     # print(f'Old file: {old_file_name}')
+            #     # print(f'New file: {move_file_name}')
             #     shutil.copyfile(old_file_name, move_file_name)
-            #
-            #     # gt_label = np.array(Image.open(old_file_name))
-            #     # print("gt_label:", len(np.unique(gt_label)[1:]))
-            #     # print("gt_label:", np.unique(gt_label)[1:])
-            #
-            #     # plt.title("gt_label")
-            #     # plt.imshow(gt_label)
-            #     # plt.show()
-            #     # plt.ioff()
+
+                # gt_label = np.array(Image.open(old_file_name))
+                # print("gt_label:", len(np.unique(gt_label)[1:]))
+                # print("gt_label:", np.unique(gt_label)[1:])
+
+                # plt.title("gt_label")
+                # plt.imshow(gt_label)
+                # plt.show()
+                # plt.ioff()
 
             else:
                 print("*** IMAGE EXT DOESN'T EXIST ***")

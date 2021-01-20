@@ -11,7 +11,7 @@ from PIL import Image
 
 
 class GTA5DataSet(data.Dataset):
-    def __init__(self, rgb_list, labels_list, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
+    def __init__(self, rgb_list, labels_list, max_iters=None, crop_size=(512, 256), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
         self.rgb_list = rgb_list
         self.labels_list = labels_list
         self.crop_size = crop_size
@@ -60,10 +60,12 @@ class GTA5DataSet(data.Dataset):
         label = label.resize(self.crop_size, Image.NEAREST)
         label = np.asarray(label, np.float32)
 
+        # print("Object IDs: ", np.unique(label))
         # re-assign labels to match the format of Cityscapes
         label_copy = 255 * np.ones(label.shape, dtype=np.float32)
         for k, v in self.id_to_trainid.items():
             label_copy[label == k] = v
+        # print("Object IDs: ", np.unique(label_copy))
 
         ### return image.copy(), label.copy()
         return image.copy(), label_copy.copy()
@@ -73,6 +75,7 @@ if __name__ == '__main__':
     dst = GTA5DataSet(rgb_list='/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/rgb_train_list.txt',
                             labels_list='/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/gta5_list/labels_train_list.txt')
     trainloader = data.DataLoader(dst, batch_size=1)
+    print("Cityscapes Dataset has: {}".format(len(trainloader)))
     for i, data in enumerate(trainloader):
         imgs, labels = data
         ### img
@@ -80,9 +83,8 @@ if __name__ == '__main__':
         img = np.transpose(np.array(img, dtype=np.int8), (1, 2, 0)) + dst.mean
         img = img[:, :, ::-1]
         ### label
-        # label = torchvision.utils.make_grid(labels).numpy()
-        label = np.array(labels, dtype=np.int8)
-        label = np.resize(label, (321, 321))
+        label = np.squeeze(np.array(labels, dtype=np.int8))
+        # label = np.resize(label, (dst.crop_size))
         label
         ### plot
         plt.subplot(2, 1, 1)
