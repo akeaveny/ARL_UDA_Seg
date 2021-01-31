@@ -9,8 +9,10 @@ import torchvision
 from torch.utils import data
 from PIL import Image
 
+import cv2
+
 class cityscapesDataSet(data.Dataset):
-    def __init__(self, rgb_list, labels_list, max_iters=None, crop_size=(640, 360), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
+    def __init__(self, rgb_list, labels_list, max_iters=None, crop_size=(512, 256), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
         self.rgb_list = rgb_list
         self.labels_list = labels_list
         self.crop_size = crop_size
@@ -53,14 +55,13 @@ class cityscapesDataSet(data.Dataset):
         label = Image.open(datafiles["label"])
         label = label.resize(self.crop_size, Image.NEAREST)
         label = np.asarray(label, np.float32)
-        # print("Object IDs: ", np.unique(label))
 
         return image.copy(), label.copy()
 
 
 if __name__ == '__main__':
-    dst = cityscapesDataSet(rgb_list='/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/rgb_train_list.txt',
-                            labels_list='/home/akeaveny/catkin_ws/src/AdaptSegNet/dataset/cityscapes_list/labels_train_list.txt')
+    dst = cityscapesDataSet(rgb_list='/home/akeaveny/git/AdaptSegNet/dataset/cityscapes_list/rgb_val_list.txt',
+                            labels_list='/home/akeaveny/git/AdaptSegNet/dataset/cityscapes_list/labels_val_list.txt')
     trainloader = data.DataLoader(dst, batch_size=1)
     print("Cityscapes Dataset has: {}".format(len(trainloader)))
     for i, data in enumerate(trainloader):
@@ -72,11 +73,13 @@ if __name__ == '__main__':
         ### label
         label = np.squeeze(np.array(labels, dtype=np.int8))
         # label = np.resize(label, (dst.crop_size))
-        label
-        ### plot
-        plt.subplot(2,1,1)
-        plt.imshow(img)
-        plt.subplot(2,1,2)
-        plt.imshow(label)
-        plt.show()
-        plt.show()
+        ### cv2
+        cv2.imshow('rgb', cv2.cvtColor(np.array(img, dtype=np.uint8), cv2.COLOR_BGR2RGB))
+        cv2.imshow('label', label * 50)
+        cv2.waitKey(0)
+        ### matplotlib
+        # plt.subplot(2, 1, 1)
+        # plt.imshow(img)
+        # plt.subplot(2, 1, 2)
+        # plt.imshow(label)
+        # plt.show()

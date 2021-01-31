@@ -5,6 +5,16 @@ import torch
 import numpy as np
 affine_par = True
 
+###########################
+###########################
+
+from pathlib import Path
+ROOT_DIR_PATH = Path(__file__).parents[1]
+
+import config
+
+###########################
+###########################
 
 def outS(i):
     i = int(i)
@@ -18,6 +28,8 @@ def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
+###########################
+###########################
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -50,31 +62,35 @@ class BasicBlock(nn.Module):
 
         return out
 
+###########################
+###########################
 
 class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
         super(Bottleneck, self).__init__()
+
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False) # change
-        self.bn1 = nn.BatchNorm2d(planes,affine = affine_par)
+        self.bn1 = nn.BatchNorm2d(planes,affine=affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
 
         padding = dilation
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, # change
-                               padding=padding, bias=False, dilation = dilation)
-        self.bn2 = nn.BatchNorm2d(planes,affine = affine_par)
+                               padding=padding, bias=False, dilation=dilation)
+        self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
         for i in self.bn2.parameters():
             i.requires_grad = False
+
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4, affine = affine_par)
+        self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
         for i in self.bn3.parameters():
             i.requires_grad = False
+
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
-
 
     def forward(self, x):
         residual = x
@@ -98,6 +114,9 @@ class Bottleneck(nn.Module):
 
         return out
 
+###########################
+###########################
+
 class Classifier_Module(nn.Module):
 
     def __init__(self, dilation_series, padding_series, num_classes):
@@ -115,17 +134,19 @@ class Classifier_Module(nn.Module):
             out += self.conv2d_list[i+1](x)
             return out
 
-
+###########################
+###########################
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, num_classes):
+    def __init__(self, block, layers, num_classes, pretrained=False):
         self.inplanes = 64
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine = affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
+
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True) # change
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -134,25 +155,20 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
         self.layer5 = self._make_pred_layer(Classifier_Module, [6,12,18,24],[6,12,18,24],num_classes)
 
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, 0.01)
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-        #        for i in m.parameters():
-        #            i.requires_grad = False
+        self._init_weight()
+
+        if pretrained:
+            self._load_pretrained_model()
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion or dilation == 2 or dilation == 4:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion,affine = affine_par))
         for i in downsample._modules['1'].parameters():
             i.requires_grad = False
+
         layers = []
         layers.append(block(self.inplanes, planes, stride,dilation=dilation, downsample=downsample))
         self.inplanes = planes * block.expansion
@@ -160,6 +176,7 @@ class ResNet(nn.Module):
             layers.append(block(self.inplanes, planes, dilation=dilation))
 
         return nn.Sequential(*layers)
+
     def _make_pred_layer(self,block, dilation_series, padding_series,num_classes):
         return block(dilation_series,padding_series,num_classes)
 
@@ -175,6 +192,35 @@ class ResNet(nn.Module):
         x = self.layer5(x)
 
         return x
+
+    ###########################
+    ###########################
+
+    def _init_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, 0.01)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def _load_pretrained_model(self):
+        print("loading pre-trained weights..")
+        # pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth')
+        saved_state_dict = model_zoo.load_url(config.PRETRAINED_WEIGHTS)
+        new_params = self.state_dict().copy()
+        for i in saved_state_dict:
+            # Scale.layer5.conv2d_list.3.weight
+            i_parts = i.split('.')
+            # print i_parts
+            if not config.NUM_CLASSES == 19 or not i_parts[1] == 'layer5':
+                new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
+                # print i_parts
+        self.load_state_dict(new_params)
+
+    ###########################
+    ###########################
 
     def get_1x_lr_params_NOscale(self):
         """
@@ -212,15 +258,32 @@ class ResNet(nn.Module):
         for j in range(len(b)):
             for i in b[j]:
                 yield i
-            
-
 
     def optim_parameters(self, args):
         return [{'params': self.get_1x_lr_params_NOscale(), 'lr': args.learning_rate},
-                {'params': self.get_10x_lr_params(), 'lr': 10*args.learning_rate}] 
+                {'params': self.get_10x_lr_params(), 'lr': 10*args.learning_rate}]
 
+    ###########################
+    ###########################
 
-def Res_Deeplab(num_classes=21):
-    model = ResNet(Bottleneck,[3, 4, 23, 3], num_classes)
+def Res_Deeplab(num_classes=21, pretrained=False):
+    model = ResNet(Bottleneck,[3, 4, 23, 3], num_classes, pretrained)
     return model
 
+#########################
+#########################
+
+if __name__ == "__main__":
+    model = Res_Deeplab(num_classes=21, pretrained=True)
+    model.to(device=config.GPU)
+    model.eval()
+
+    from torchsummary import summary
+
+    summary(model, config.TORCH_SUMMARY)
+
+    image = torch.randn(1, 3, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    print("\nImage: ", image.size())
+    with torch.no_grad():
+        output = model.forward(image.to(device=config.GPU))
+    print("output: {}".format(output.size()))

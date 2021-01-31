@@ -3,6 +3,35 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.autograd import Variable
 
+######################
+######################
+
+from pathlib import Path
+ROOT_DIR_PATH = Path(__file__).parents[1].absolute().resolve(strict=True)
+
+import config
+from utils import helper_utils
+
+######################
+######################
+
+def lr_poly(base_lr, iter, max_iter, power):
+    return base_lr * ((1 - float(iter) / max_iter) ** (power))
+
+def adjust_learning_rate(optimizer, i_iter):
+    lr = lr_poly(config.LEARNING_RATE, i_iter, config.NUM_STEPS, config.POWER)
+    optimizer.param_groups[0]['lr'] = lr
+    if len(optimizer.param_groups) > 1:
+        optimizer.param_groups[1]['lr'] = lr * 10
+
+def adjust_learning_rate_D(optimizer, i_iter):
+    lr = lr_poly(config.LEARNING_RATE_D, i_iter, config.NUM_STEPS, config.POWER)
+    optimizer.param_groups[0]['lr'] = lr
+    if len(optimizer.param_groups) > 1:
+        optimizer.param_groups[1]['lr'] = lr * 10
+
+######################
+######################
 
 class CrossEntropy2d(nn.Module):
 

@@ -3,9 +3,20 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch
 import numpy as np
+import torch.nn.functional as F
 
 affine_par = True
 
+###########################
+###########################
+
+from pathlib import Path
+ROOT_DIR_PATH = Path(__file__).parents[1]
+
+import config
+
+###########################
+###########################
 
 def outS(i):
     i = int(i)
@@ -20,6 +31,8 @@ def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
+###########################
+###########################
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -52,12 +65,15 @@ class BasicBlock(nn.Module):
 
         return out
 
+###########################
+###########################
 
 class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
         super(Bottleneck, self).__init__()
+
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)  # change
         self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
         for i in self.bn1.parameters():
@@ -69,10 +85,12 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
         for i in self.bn2.parameters():
             i.requires_grad = False
+
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
         for i in self.bn3.parameters():
             i.requires_grad = False
+
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -99,14 +117,15 @@ class Bottleneck(nn.Module):
 
         return out
 
+###########################
+###########################
 
 class Classifier_Module(nn.Module):
     def __init__(self, inplanes, dilation_series, padding_series, num_classes):
         super(Classifier_Module, self).__init__()
         self.conv2d_list = nn.ModuleList()
         for dilation, padding in zip(dilation_series, padding_series):
-            self.conv2d_list.append(
-                nn.Conv2d(inplanes, num_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
+            self.conv2d_list.append(nn.Conv2d(inplanes, num_classes, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
 
         for m in self.conv2d_list:
             m.weight.data.normal_(0, 0.01)
@@ -117,16 +136,19 @@ class Classifier_Module(nn.Module):
             out += self.conv2d_list[i + 1](x)
         return out
 
+###########################
+###########################
 
 class ResNetMulti(nn.Module):
-    def __init__(self, block, layers, num_classes):
+    def __init__(self, block, layers, num_classes, pretrained=True):
         self.inplanes = 64
         super(ResNetMulti, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
+
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True)  # change
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -136,25 +158,20 @@ class ResNetMulti(nn.Module):
         self.layer5 = self._make_pred_layer(Classifier_Module, 1024, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
         self.layer6 = self._make_pred_layer(Classifier_Module, 2048, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
 
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, 0.01)
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-                #        for i in m.parameters():
-                #            i.requires_grad = False
+        self._init_weight()
+
+        if pretrained:
+            self._load_pretrained_model()
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion or dilation == 2 or dilation == 4:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion, affine=affine_par))
         for i in downsample._modules['1'].parameters():
             i.requires_grad = False
+
         layers = []
         layers.append(block(self.inplanes, planes, stride, dilation=dilation, downsample=downsample))
         self.inplanes = planes * block.expansion
@@ -166,8 +183,8 @@ class ResNetMulti(nn.Module):
     def _make_pred_layer(self, block, inplanes, dilation_series, padding_series, num_classes):
         return block(inplanes, dilation_series, padding_series, num_classes)
 
-    def forward(self, x):
-        x = self.conv1(x)
+    def forward(self, input):
+        x = self.conv1(input)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
@@ -176,11 +193,42 @@ class ResNetMulti(nn.Module):
 
         x = self.layer3(x)
         x1 = self.layer5(x)
+        x1 = F.upsample(x1, size=input.size()[2:], mode='bilinear', align_corners=True)
 
         x2 = self.layer4(x)
         x2 = self.layer6(x2)
+        x2 = F.upsample(x2, size=input.size()[2:], mode='bilinear', align_corners=True)
 
         return x1, x2
+
+    ###########################
+    ###########################
+
+    def _init_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, 0.01)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def _load_pretrained_model(self):
+        print("loading pre-trained weights .. {}".format(config.PRETRAINED_WEIGHTS))
+        # pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth')
+        saved_state_dict = model_zoo.load_url(config.PRETRAINED_WEIGHTS)
+        new_params = self.state_dict().copy()
+        for i in saved_state_dict:
+            # Scale.layer5.conv2d_list.3.weight
+            i_parts = i.split('.')
+            # print i_parts
+            if not config.NUM_CLASSES == 19 or not i_parts[1] == 'layer5':
+                new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
+                # print i_parts
+        self.load_state_dict(new_params)
+
+    ###########################
+    ###########################
 
     def get_1x_lr_params_NOscale(self):
         """
@@ -219,12 +267,31 @@ class ResNetMulti(nn.Module):
             for i in b[j]:
                 yield i
 
-    def optim_parameters(self, args):
-        return [{'params': self.get_1x_lr_params_NOscale(), 'lr': args.learning_rate},
-                {'params': self.get_10x_lr_params(), 'lr': 10 * args.learning_rate}]
+    def optim_parameters(self, learning_rate):
+        return [{'params': self.get_1x_lr_params_NOscale(), 'lr': learning_rate},
+                {'params': self.get_10x_lr_params(), 'lr': 10 * learning_rate}]
 
+    ###########################
+    ###########################
 
-def DeeplabMulti(num_classes=21):
-    model = ResNetMulti(Bottleneck, [3, 4, 23, 3], num_classes)
+def DeeplabMulti(num_classes=21, pretrained=True):
+    model = ResNetMulti(Bottleneck, [3, 4, 23, 3], num_classes, pretrained)
     return model
+
+#########################
+#########################
+
+if __name__ == "__main__":
+    model = DeeplabMulti(num_classes=21, pretrained=True)
+    model.to(device=config.GPU)
+    model.eval()
+
+    from torchsummary import summary
+    summary(model, config.TORCH_SUMMARY)
+
+    image = torch.randn(1, 3, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    print("\nImage: ", image.size())
+    with torch.no_grad():
+        output1, output2 = model.forward(image.to(device=config.GPU))
+    print("output1: {},\t output2: {}".format(output1.size(), output2.size()))
 
