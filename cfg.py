@@ -16,8 +16,8 @@ FRAMEWORK Selection:
 '''
 
 # TODO: prelim for naming
-FRAMEWORK           = 'Segmentation'
-EXP_DATASET_NAME    = 'UMD_Real_RGB'
+FRAMEWORK           = 'CLAN'
+EXP_DATASET_NAME    = 'UMD_Syn_RGBD_SE'
 EXP_NUM             = 'v0'
 
 #######################################
@@ -34,7 +34,7 @@ MODEL Selection:
 'DeepLabv3DepthMulti'
 '''
 
-MODEL = 'DeepLabv3Depth'
+MODEL = 'DeepLabv3DepthMulti'
 LAMBDA_SEG = 1                 # 0.1 for AdaptSegNet with different classifiers
 NUM_CHANNELS        = 4        # RGB=3 or DEPTH=1 or RGB=4
 NUM_RGB_CHANNELS    = NUM_CHANNELS - 1
@@ -80,9 +80,9 @@ RANDOM_SEED = 1234
 NUM_STEPS =      250000
 NUM_STEPS_STOP = 150000 # early stopping
 
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 ITER_SIZE = 1
-NUM_WORKERS = 8
+NUM_WORKERS = 4
 
 LEARNING_RATE = 2.5e-4
 POWER = 0.9
@@ -199,6 +199,6 @@ DATA_DIRECTORY_TARGET_VAL = DATA_DIRECTORY_TARGET + 'val/'
 DATA_DIRECTORY_TARGET_TEST = DATA_DIRECTORY_TARGET + 'test/'
 
 ### TEST
-TEST_SAVE_FOLDER = DATA_DIRECTORY_TARGET + 'test/pred/'
+TEST_SAVE_FOLDER = DATA_DIRECTORY_TARGET + 'test/pred2/'
 MIOU_TEST_INFO = ROOT_DIR_PATH + 'dataset/cityscapes_list/info.json'
 

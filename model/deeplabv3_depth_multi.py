@@ -330,6 +330,7 @@ class DeepLabv3DepthMulti(nn.Module):
             print("Number of Depth Channels: {}".format(nDChannels))
             print("Number of classes: {}".format(n_classes))
             print("Output stride: {}".format(os))
+            print("Batch Size: {}".format(config.BATCH_SIZE))
         super(DeepLabv3DepthMulti, self).__init__()
 
         # ResNet 101

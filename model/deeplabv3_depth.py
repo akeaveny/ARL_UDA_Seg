@@ -121,11 +121,11 @@ class ResNetDepth(nn.Module):
         # Fusion
         ###########################
 
-        self.se_resnet_0 = SqueezeAndExciteFusionAdd(64, activation=self.relu)
-        self.se_resnet_1 = SqueezeAndExciteFusionAdd(256, activation=self.relu)
-        self.se_resnet_2 = SqueezeAndExciteFusionAdd(512, activation=self.relu)
-        self.se_resnet_3 = SqueezeAndExciteFusionAdd(1024, activation=self.relu)
-        self.se_resnet_4 = SqueezeAndExciteFusionAdd(2048, activation=self.relu)
+        self.se_resnet_1 = SqueezeAndExciteFusionAdd(64, activation=self.relu)
+        self.se_resnet_2 = SqueezeAndExciteFusionAdd(256, activation=self.relu)
+        self.se_resnet_3 = SqueezeAndExciteFusionAdd(512, activation=self.relu)
+        self.se_resnet_4 = SqueezeAndExciteFusionAdd(1024, activation=self.relu)
+        self.se_resnet_5 = SqueezeAndExciteFusionAdd(2048, activation=self.relu)
 
         #########################
         #########################
@@ -205,21 +205,21 @@ class ResNetDepth(nn.Module):
         x_resnet0 = self.bn1(x_resnet0)
         x_resnet0 = self.relu(x_resnet0)
         x_resnet0 = self.maxpool(x_resnet0)
-        x_resnet0 = self.se_resnet_0(rgb=x_resnet0, depth=x_depth_resnet0)
+        x_resnet0 = self.se_resnet_1(rgb=x_resnet0, depth=x_depth_resnet0)
 
         # ResNet Block 1
         x_resnet1 = self.layer1(x_resnet0)
-        x_resnet1 = self.se_resnet_1(rgb=x_resnet1, depth=x_depth_resnet1)
+        x_resnet1 = self.se_resnet_2(rgb=x_resnet1, depth=x_depth_resnet1)
         low_level_rgb_feat = x_resnet1
         # ResNet Block 2
         x_resnet2 = self.layer2(x_resnet1)
-        x_resnet2 = self.se_resnet_2(rgb=x_resnet2, depth=x_depth_resnet2)
+        x_resnet2 = self.se_resnet_3(rgb=x_resnet2, depth=x_depth_resnet2)
         # ResNet Block 3
         x_resnet3 = self.layer3(x_resnet2)
-        x_resnet3 = self.se_resnet_3(rgb=x_resnet3, depth=x_depth_resnet3)
+        x_resnet3 = self.se_resnet_4(rgb=x_resnet3, depth=x_depth_resnet3)
         # ResNet Block 4
         x_resnet4 = self.layer4(x_resnet3)
-        x_resnet4 = self.se_resnet_4(rgb=x_resnet4, depth=x_depth_resnet4)
+        x_resnet4 = self.se_resnet_5(rgb=x_resnet4, depth=x_depth_resnet4)
 
         ###########################
         ### TODO: Addition or Concat (see paper ..)
@@ -330,6 +330,7 @@ class DeepLabv3Depth(nn.Module):
             print("Number of Depth Channels: {}".format(nDChannels))
             print("Number of classes: {}".format(n_classes))
             print("Output stride: {}".format(os))
+            print("Batch Size: {}".format(config.BATCH_SIZE))
         super(DeepLabv3Depth, self).__init__()
 
         # ResNet 101

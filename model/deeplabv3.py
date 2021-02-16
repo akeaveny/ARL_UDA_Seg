@@ -257,6 +257,7 @@ class DeepLabv3(nn.Module):
             print("Number of RGB Channels: {}".format(nInputChannels))
             print("Number of classes: {}".format(n_classes))
             print("Output stride: {}".format(os))
+            print("Batch Size: {}".format(config.BATCH_SIZE))
         super(DeepLabv3, self).__init__()
 
         # ResNet 101

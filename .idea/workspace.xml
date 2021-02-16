@@ -20,9 +20,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="29a03fb2-ddb5-437d-815b-e92da5b51c91" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/ARL_UDA_Seg.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ARL_UDA_Seg.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cfg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/deeplabv3.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/deeplabv3_depth.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_depth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/deeplabv3_depth_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_depth_multi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/deeplabv3_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_multi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
