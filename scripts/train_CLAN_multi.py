@@ -156,11 +156,16 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             #############################
             # Adaptive Adversarial Loss
             #############################
+            # print("input:", D_out.size())
+            # print("target:", helper_utils.fill_DA_label(D_out.data.size(), source_label).size())
+            # print("weight_map:", weight_map.size())
 
             if (i_iter > config.PREHEAT_STEPS):
-                loss_adv = weighted_bce_loss(D_out, helper_utils.fill_DA_label(D_out.data.size(), source_label),
-                                             weight_map,
-                                             config.EPSILON, config.LAMBDA_LOCAL)
+                loss_adv = weighted_bce_loss(input=D_out,
+                                             target=helper_utils.fill_DA_label(D_out.data.size(), source_label),
+                                             weight=weight_map,
+                                             alpha=config.EPSILON,
+                                             beta=config.LAMBDA_LOCAL)
             else:
                 loss_adv = bce_loss(D_out, helper_utils.fill_DA_label(D_out.data.size(), source_label))
 

@@ -70,8 +70,8 @@ class FCDiscriminator(nn.Module):
 
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
-    def forward(self, x):
-        x = self.conv1(x)
+    def forward(self, segmap, upsample=True):
+        x = self.conv1(segmap)
         x = self.leaky_relu(x)
         x = self.conv2(x)
         x = self.leaky_relu(x)
@@ -80,6 +80,12 @@ class FCDiscriminator(nn.Module):
         x = self.conv4(x)
         x = self.leaky_relu(x)
         x = self.classifier(x)
+
+        ###########################
+        ###########################
+
+        if upsample:
+            x = F.upsample(x, size=segmap.size()[2:], mode='bilinear', align_corners=True)
 
         return x
 

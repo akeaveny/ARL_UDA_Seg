@@ -64,8 +64,7 @@ class WeightedBCEWithLogitsLoss(nn.Module):
 
     def weighted(self, input, target, weight, alpha, beta):
         if not (target.size() == input.size()):
-            raise ValueError(
-                "Target size ({}) must be the same as input size ({})".format(target.size(), input.size()))
+            raise ValueError("Target size ({}) must be the same as input size ({})".format(target.size(), input.size()))
 
         max_val = (-input).clamp(min=0)
         loss = input - input * target + max_val + ((-max_val).exp() + (-input - max_val).exp()).log()
@@ -79,6 +78,13 @@ class WeightedBCEWithLogitsLoss(nn.Module):
             return loss.sum()
 
     def forward(self, input, target, weight, alpha, beta):
+        """
+         input=D_out,
+         target=helper_utils.fill_DA_label(D_out.data.size(), source_label),
+         weight=weight_map,
+         alpha=config.EPSILON,
+         beta=config.LAMBDA_LOCAL
+        """
         if weight is not None:
             return self.weighted(input, target, weight, alpha, beta)
         else:
