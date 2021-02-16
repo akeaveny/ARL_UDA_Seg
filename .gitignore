@@ -3,3 +3,4 @@
 *.png
 *.jpg
 snapshots/*
+trained_models/*
