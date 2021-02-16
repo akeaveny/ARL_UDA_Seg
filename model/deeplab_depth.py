@@ -15,6 +15,8 @@ ROOT_DIR_PATH = Path(__file__).parents[1]
 
 import cfg as config
 
+from utils.helper_models import SqueezeAndExciteFusionAdd
+
 ###########################
 ###########################
 
@@ -136,21 +138,24 @@ class Classifier_Module(nn.Module):
 ###########################
 ###########################
 
-class ResNet(nn.Module):
+class ResNetDepth(nn.Module):
     def __init__(self, block, layers, num_classes, pretrained=True,
-                 num_channels=3):
-        self.num_channels = num_channels
-        self.inplanes = 64
-        super(ResNet, self).__init__()
+                 rgb_channels=3, depth_channels=1):
+        self.rgb_channels = rgb_channels
+        self.depth_channels = depth_channels
+        super(ResNetDepth, self).__init__()
 
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True)  # change
 
-        ###########################
-        # ResNet 101
-        ###########################
+        #########################
+        # RGB
+        #########################
 
-        self.conv1 = nn.Conv2d(self.num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.inplanes = 64
+
+        # RGB
+        self.conv1 = nn.Conv2d(self.rgb_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
         for i in self.bn1.parameters():
             i.requires_grad = False
@@ -160,11 +165,38 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
 
+        #########################
+        # DEPTH
+        #########################
+
+        self.inplanes = 64
+
+        # Depth
+        self.conv1_depth = nn.Conv2d(self.depth_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1_depth = nn.BatchNorm2d(64, affine=affine_par)
+        for i in self.bn1_depth.parameters():
+            i.requires_grad = False
+
+        self.layer1_depth = self._make_layer(block, 64, layers[0])
+        self.layer2_depth = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3_depth = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
+        self.layer4_depth = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
+
+        ###########################
+        # Fusion
+        ###########################
+
+        self.se_resnet_1 = SqueezeAndExciteFusionAdd(64, activation=self.relu)
+        self.se_resnet_2 = SqueezeAndExciteFusionAdd(256, activation=self.relu)
+        self.se_resnet_3 = SqueezeAndExciteFusionAdd(512, activation=self.relu)
+        self.se_resnet_4 = SqueezeAndExciteFusionAdd(1024, activation=self.relu)
+        self.se_resnet_5 = SqueezeAndExciteFusionAdd(2048, activation=self.relu)
+
         ###########################
         # Classifier
         ###########################
 
-        self.layer5 = self._make_pred_layer(Classifier_Module, 2048, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
+        self.layer5 = self._make_pred_layer(Classifier_Module, 2048*2, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
 
         self._init_weight()
 
@@ -172,6 +204,9 @@ class ResNet(nn.Module):
             self._load_pretrained_model()
         else:
             print("training from scratch .. ")
+
+    ###########################
+    ###########################
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1):
         downsample = None
@@ -193,28 +228,72 @@ class ResNet(nn.Module):
     def _make_pred_layer(self, block, inplanes, dilation_series, padding_series, num_classes):
         return block(inplanes, dilation_series, padding_series, num_classes)
 
-    def forward(self, input, upsample=True):
-        # ResNet Block 1
-        x = self.conv1(input)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        # ResNet Block 2
-        x = self.layer1(x)
-        # ResNet Block 3
-        x = self.layer2(x)
-        # ResNet Block 4
-        x = self.layer3(x)
-        # ResNet Block 5
-        x = self.layer4(x)
+    def forward(self, rgb, depth, upsample=True):
 
+        ###########################
+        # depth
+        ###########################
+        # ResNet Block 0
+        x_depth_resnet0 = self.conv1_depth(depth)
+        x_depth_resnet0 = self.bn1_depth(x_depth_resnet0)
+        x_depth_resnet0 = self.relu(x_depth_resnet0)
+        x_depth_resnet0 = self.maxpool(x_depth_resnet0)
+
+        # ResNet Block 1
+        x_depth_resnet1 = self.layer1_depth(x_depth_resnet0)
+
+        # ResNet Block 2
+        x_depth_resnet2 = self.layer2_depth(x_depth_resnet1)
+
+        # ResNet Block 3
+        x_depth_resnet3 = self.layer3_depth(x_depth_resnet2)
+
+        # ResNet Block 4
+        x_depth_resnet4 = self.layer4_depth(x_depth_resnet3)
+
+        ###########################
+        # Feature Extraction
+        ###########################
+
+        # ResNet Block 0
+        x_resnet0 = self.conv1(rgb)
+        x_resnet0 = self.bn1(x_resnet0)
+        x_resnet0 = self.relu(x_resnet0)
+        x_resnet0 = self.maxpool(x_resnet0)
+        # x_resnet0 = self.se_resnet_1(x_resnet0, x_depth_resnet0)
+
+        # ResNet Block 1
+        x_resnet1 = self.layer1(x_resnet0)
+        # x_resnet1 = self.se_resnet_2(x_resnet1, x_depth_resnet1)
+
+        # ResNet Block 2
+        x_resnet2 = self.layer2(x_resnet1)
+        # x_resnet2 = self.se_resnet_3(x_resnet2, x_depth_resnet2)
+
+        # ResNet Block 3
+        x_resnet3 = self.layer3(x_resnet2)
+        # x_resnet3 = self.se_resnet_4(x_resnet3, x_depth_resnet3)
+
+        # ResNet Block 4
+        x_resnet4 = self.layer4(x_resnet3)
+        # x_resnet4 = self.se_resnet_5(x_resnet4, x_depth_resnet4)
+
+        ###########################
+        ### TODO: Addition or Concat
+        ###########################
+
+        x1_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
+        # x += x_depth
+
+        ###########################
         # Classifier 1
-        x1 = self.layer5(x)
+        ###########################
+        x1 = self.layer5(x1_cat)
 
         ###########################
         ###########################
         if upsample:
-            x1 = F.upsample(x1, size=input.size()[2:], mode='bilinear', align_corners=True)
+            x1 = F.upsample(x1, size=rgb.size()[2:], mode='bilinear', align_corners=True)
 
         return x1
 
@@ -244,7 +323,7 @@ class ResNet(nn.Module):
                 pruned_saved_state_dict = {}
                 for i in saved_state_dict:
                     i_parts = i.split('.')
-                    if i_parts[1] != 'conv1' and i_parts[1] != 'bn1':
+                    if i_parts[1] != 'conv1' and i_parts[1] != 'bn1' and i_parts[1] != 'layer1': # layer1 for depth branch
                         pruned_saved_state_dict[i] = saved_state_dict[i]
                 saved_state_dict = pruned_saved_state_dict
             #######################
@@ -254,6 +333,8 @@ class ResNet(nn.Module):
                 i_parts = i.split('.')
                 if config.NUM_CLASSES == 21 or i_parts[1] != 'layer5':  ### 21 is from AdaptSegNet
                     new_params['.'.join(i_parts[1:])] = saved_state_dict[i]
+                    # copying to depth params
+                    new_params[i_parts[1] + '_depth.' + '.'.join(i_parts[2:])] = saved_state_dict[i]
             self.load_state_dict(new_params)
 
     ###########################
@@ -268,6 +349,9 @@ class ResNet(nn.Module):
         """
         b = []
 
+        ###########################
+        ###########################
+
         # ResNet Block 1
         b.append(self.conv1)
         b.append(self.bn1)
@@ -279,6 +363,31 @@ class ResNet(nn.Module):
         b.append(self.layer3)
         # ResNet Block 5
         b.append(self.layer4)
+
+        ###########################
+        ###########################
+
+        # ResNet Block 1
+        b.append(self.conv1_depth)
+        b.append(self.bn1_depth)
+        # ResNet Block 2
+        b.append(self.layer1_depth)
+        # ResNet Block 3
+        b.append(self.layer2_depth)
+        # ResNet Block 4
+        b.append(self.layer3_depth)
+        # ResNet Block 5
+        b.append(self.layer4_depth)
+
+        ###########################
+        ###########################
+
+        # SE layers
+        b.append(self.se_resnet_1)
+        b.append(self.se_resnet_2)
+        b.append(self.se_resnet_3)
+        b.append(self.se_resnet_4)
+        b.append(self.se_resnet_5)
 
         for i in range(len(b)):
             for j in b[i].modules():
@@ -308,29 +417,32 @@ class ResNet(nn.Module):
     ###########################
     ###########################
 
-def Deeplab(num_classes=config.NUM_CLASSES, pretrained=config.LOAD_PRETRAINED_WEIGHTS,
-            num_channels=config.NUM_CHANNELS):
-    model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes, pretrained=pretrained, num_channels=num_channels)
+def DeeplabDepth(num_classes=config.NUM_CLASSES, pretrained=config.LOAD_PRETRAINED_WEIGHTS,
+                      rgb_channels=config.NUM_RGB_CHANNELS, depth_channels=config.NUM_D_CHANNELS):
+    model = ResNetDepth(Bottleneck, [3, 4, 23, 3], num_classes, pretrained,
+                             rgb_channels=rgb_channels, depth_channels=depth_channels)
     return model
 
 #########################
 #########################
 
 if __name__ == "__main__":
-    model = Deeplab(num_classes=config.NUM_CLASSES, pretrained=config.LOAD_PRETRAINED_WEIGHTS,
-                    num_channels=config.NUM_CHANNELS)
+    model = DeeplabDepth(num_classes=config.NUM_CLASSES, pretrained=config.LOAD_PRETRAINED_WEIGHTS,
+                              rgb_channels=config.NUM_RGB_CHANNELS, depth_channels=config.NUM_D_CHANNELS)
     model.to(device=config.GPU)
     model.eval()
 
     ### print(model.optim_parameters(config.LEARNING_RATE))
 
     from torchsummary import summary
-    TORCH_SUMMARY = (config.NUM_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
-    summary(model, TORCH_SUMMARY)
+    TORCH_SUMMARY       = (config.NUM_RGB_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    TORCH_SUMMARY_DEPTH = (config.NUM_D_CHANNELS,   config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    summary(model, [TORCH_SUMMARY, TORCH_SUMMARY_DEPTH])
 
-    image = torch.randn(config.BATCH_SIZE, config.NUM_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
-    print("\nImage: ", image.size())
+    image = torch.randn(config.BATCH_SIZE, config.NUM_RGB_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    depth = torch.randn(config.BATCH_SIZE, config.NUM_D_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    print("\nImage:{}\nDepth:{}".format(image.size(), depth.size()))
     with torch.no_grad():
-        pred_target_main = model.forward(image.to(device=config.GPU))
+        pred_target_main = model.forward(image.to(device=config.GPU), depth.to(device=config.GPU))
     print("pred_target_main: {}".format(pred_target_main.size()))
 

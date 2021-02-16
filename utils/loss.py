@@ -9,33 +9,16 @@ from torch.autograd import Variable
 from pathlib import Path
 ROOT_DIR_PATH = Path(__file__).parents[1].absolute().resolve(strict=True)
 
-import config
+import cfg as config
+
 from utils import helper_utils
-
-######################
-######################
-
-def lr_poly(base_lr, iter, max_iter, power):
-    return base_lr * ((1 - float(iter) / max_iter) ** (power))
-
-def adjust_learning_rate(optimizer, i_iter):
-    lr = lr_poly(config.LEARNING_RATE, i_iter, config.NUM_STEPS, config.POWER)
-    optimizer.param_groups[0]['lr'] = lr
-    if len(optimizer.param_groups) > 1:
-        optimizer.param_groups[1]['lr'] = lr * 10
-
-def adjust_learning_rate_D(optimizer, i_iter):
-    lr = lr_poly(config.LEARNING_RATE_D, i_iter, config.NUM_STEPS, config.POWER)
-    optimizer.param_groups[0]['lr'] = lr
-    if len(optimizer.param_groups) > 1:
-        optimizer.param_groups[1]['lr'] = lr * 10
 
 ######################
 ######################
 
 class CrossEntropy2d(nn.Module):
 
-    def __init__(self, size_average=True, ignore_label=255):
+    def __init__(self, size_average=True, ignore_label=config.IGNORE_LABEL):
         super(CrossEntropy2d, self).__init__()
         self.size_average = size_average
         self.ignore_label = ignore_label
@@ -56,6 +39,12 @@ class CrossEntropy2d(nn.Module):
         assert predict.size(3) == target.size(2), "{0} vs {1} ".format(predict.size(3), target.size(3))
         n, c, h, w = predict.size()
         target_mask = (target >= 0) * (target != self.ignore_label)
+
+        # print(f'Target')
+        # helper_utils.print_class_labels(target.cpu().detach().clone())
+        # print(f'Target Mask')
+        # helper_utils.print_class_labels(target_mask.cpu().detach().clone())
+
         target = target[target_mask]
         if not target.data.dim():
             return Variable(torch.zeros(1))
@@ -63,3 +52,34 @@ class CrossEntropy2d(nn.Module):
         predict = predict[target_mask.view(n, h, w, 1).repeat(1, 1, 1, c)].view(-1, c)
         loss = F.cross_entropy(predict, target, weight=weight, size_average=self.size_average)
         return loss
+
+######################
+######################
+
+class WeightedBCEWithLogitsLoss(nn.Module):
+
+    def __init__(self, size_average=True):
+        super(WeightedBCEWithLogitsLoss, self).__init__()
+        self.size_average = size_average
+
+    def weighted(self, input, target, weight, alpha, beta):
+        if not (target.size() == input.size()):
+            raise ValueError(
+                "Target size ({}) must be the same as input size ({})".format(target.size(), input.size()))
+
+        max_val = (-input).clamp(min=0)
+        loss = input - input * target + max_val + ((-max_val).exp() + (-input - max_val).exp()).log()
+
+        if weight is not None:
+            loss = alpha * loss + beta * loss * weight
+
+        if self.size_average:
+            return loss.mean()
+        else:
+            return loss.sum()
+
+    def forward(self, input, target, weight, alpha, beta):
+        if weight is not None:
+            return self.weighted(input, target, weight, alpha, beta)
+        else:
+            return self.weighted(input, target, None, alpha, beta)
