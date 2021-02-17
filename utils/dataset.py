@@ -269,14 +269,26 @@ class BasicDataSet(data.Dataset):
 
 if __name__ == '__main__':
     dst = BasicDataSet(
-                       dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN, ### SYN
-                       crop_size=config.INPUT_SIZE_TARGET,
-                       # dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,    ### REAL
-                       # crop_size=config.INPUT_SIZE_TARGET,
-                       gta5_remap_label_idx=False,
-                       extend_dataset=False,
-                       apply_imgaug=False,
-                       use_depth_imgs=config.USE_DEPTH_IMGS)
+                        ### SYN
+                        dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
+                        mean=config.IMG_MEAN,
+                        resize=config.RESIZE,
+                        crop_size=config.INPUT_SIZE,
+                        ### REAL
+                        # dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,
+                        # mean=config.IMG_MEAN_TARGET,
+                        # resize=config.RESIZE_TARGET,
+                        # crop_size=config.INPUT_SIZE_TARGET,
+                        ### DEPTH
+                        use_depth_imgs=config.USE_DEPTH_IMGS,
+                        ### MASK
+                        gta5_remap_label_idx=False,
+                        ignore_label=config.IGNORE_LABEL,
+                        ### EXTENDING DATASET
+                        extend_dataset=True,
+                        max_iters=1000,
+                        ### IMGAUG
+                        apply_imgaug=True)
     trainloader = data.DataLoader(dst, batch_size=1)
     rgb_mean, rgb_std = 0, 0
     depth_mean, depth_std = 0, 0
@@ -296,7 +308,7 @@ if __name__ == '__main__':
         img_stats = img_stats.view(img_stats.size(0), -1)
         depth_mean += img_stats.mean(1).sum(0)
         depth_std += img_stats.std(1).sum(0)
-        # if i == 10: break
+        if i >= 100: break
         ###
         imgs = helper_utils.torch_2_numpy(imgs, mean=dst.mean, is_rgb=True)
         depths = helper_utils.torch_2_numpy(depths, mean=dst.mean, is_depth=True)

@@ -98,13 +98,19 @@ BETA_1 = 0.9
 BETA_2 = 0.99
 
 ### IMG AUG
-# IMG_MEAN = [104.00698793, 116.66876762, 122.67891434]         # AdaptSegNet
-IMG_MEAN = [94.2079, 73.0177, 71.1790, 135.5964]              # UMD REAL RGB+D
+### AdaptSegNet
+# IMG_MEAN = [104.00698793, 116.66876762, 122.67891434]             # AdaptSegNet
 
-### IMG SIZE
-RESIZE =            (int(640*2), int(480*2))
-INPUT_SIZE =        (int(640*1), int(640*1))
-INPUT_SIZE_TARGET = (int(640*1), int(640*1))
+### SYN UMD
+IMG_MEAN =   [147.1167, 127.1642, 128.9464, 162.40452575683594]
+RESIZE =     (int(640*1.35), int(480*1.35))
+INPUT_SIZE = (int(384*1), int(384*1))
+
+### REAL UMD
+IMG_MEAN_TARGET =   [94.2079, 73.0177, 71.1790, 135.5964]             # 384x384 UMD REAL RGB+D
+RESIZE_TARGET =     (int(640*1), int(640*1))
+INPUT_SIZE_TARGET = (int(384*1), int(384*1))
+
 IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
 
 NUM_TEST = 100
