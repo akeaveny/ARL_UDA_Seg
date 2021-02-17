@@ -89,8 +89,8 @@ def cuda_2_numpy(cuda_img, mean=config.IMG_MEAN, is_rgb=False, is_pred=False):
 
         # probs = F.softmax(cuda_img, dim=1)
         # numpy_img = probs.squeeze().cpu().detach().numpy()
-        # numpy_img = [numpy_img[c, :, :] > config.CONFIDENCE_THRESHOLD for c in range(1, numpy_img.shape[0])]
-        # numpy_img = np.asarray(np.argmax(np.asarray(numpy_img), axis=0)+1, dtype=np.uint8)
+        # numpy_img = [numpy_img[c, :, :] > config.CONFIDENCE_THRESHOLD for c in range(numpy_img.shape[0])]
+        # numpy_img = np.asarray(np.argmax(np.asarray(numpy_img), axis=0), dtype=np.uint8)
 
     return np.array(numpy_img, dtype=np.uint8)
 

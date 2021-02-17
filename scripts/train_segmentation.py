@@ -48,7 +48,8 @@ def train_segmentation(model, target_loader, test_loader, writer):
 
     from utils.eval_metrics import eval_model
     # mIoU, best_mIoU = -np.inf, -np.inf
-    Fwb, best_Fwb = -np.inf, -np.inf
+    Fwb = -np.inf
+    best_Fwb = config.BestFwb if config.BestFwb is not None else -np.inf
 
     ######################
     ######################

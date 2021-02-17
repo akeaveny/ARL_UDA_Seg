@@ -166,8 +166,8 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
                 pred_target_aux, pred_target_main = model(images, depths)
             target_pred = pred_target_main[0, :, :]
 
-            D_out1 = upsample_target(model_D1(F.softmax(pred_target_aux)))
-            D_out2 = upsample_target(model_D2(F.softmax(pred_target_main)))
+            D_out1 = model_D1(F.softmax(pred_target_aux))
+            D_out2 = model_D2(F.softmax(pred_target_main))
 
             loss_adv_target1 = bce_loss(D_out1, helper_utils.fill_DA_label(D_out1.data.size(), source_label))
             loss_adv_target2 = bce_loss(D_out2, helper_utils.fill_DA_label(D_out2.data.size(), source_label))

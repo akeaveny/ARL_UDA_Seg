@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 '''
 
 # TODO: prelim for naming
-FRAMEWORK           = 'CLAN'
+FRAMEWORK           = 'Segmentation'
 EXP_DATASET_NAME    = 'UMD_Syn_RGBD_SE'
 EXP_NUM             = 'v1'
 
@@ -34,13 +34,13 @@ MODEL Selection:
 'DeepLabv3DepthMulti'
 '''
 
-MODEL = 'DeepLabv3DepthMulti'
+MODEL = 'DeepLabv3Depth'
 LAMBDA_SEG = 1                 # 0.1 for AdaptSegNet with different classifiers
 NUM_CHANNELS        = 4        # RGB=3 or DEPTH=1 or RGB=4
 NUM_RGB_CHANNELS    = NUM_CHANNELS - 1
 NUM_D_CHANNELS      = NUM_CHANNELS - 3
 
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.1
 
 LOAD_PRETRAINED_WEIGHTS = True
 PRETRAINED_WEIGHTS = 'http://vllab.ucmerced.edu/ytsai/CVPR18/DeepLab_resnet_pretrained_init-f81d91e8.pth'
@@ -50,6 +50,7 @@ V3_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.
 
 StartIteration = 0
 RESTORE_CHECKPOINT = None
+BestFwb = None
 
 #######################################
 #######################################
@@ -68,7 +69,8 @@ RESTORE_TRAINED_MODEL = '/home/akeaveny/catkin_ws/src/ARL_UDA_Seg/snapshots/CLAN
 # RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/trained_models/UMD/UMD_Real_D/Segmentation_UMD_Real_D_384x384_v0/BEST_SEG_MODEL.pth'
 # RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/trained_models/UMD/UMD_Real_RGBD_SE/Segmentation_UMD_Real_RGBD_SE_384x384_v0/BEST_SEG_MODEL.pth'
 
-RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Real_RGBD_SE/Segmentation_UMD_Real_RGBD_SE_384x384_v0/BEST_SEG_MODEL.pth'
+# RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Syn_RGBD_SE/Segmentation_UMD_Syn_RGBD_SE_480x480_v1/BEST_SEG_MODEL.pth'
+RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Syn_RGBD_SE/Segmentation_UMD_Syn_RGBD_SE_384x384_v0/BEST_SEG_MODEL.pth'
 
 #######################################
 #######################################
@@ -100,9 +102,9 @@ BETA_2 = 0.99
 IMG_MEAN = [94.2079, 73.0177, 71.1790, 135.5964]              # UMD REAL RGB+D
 
 ### IMG SIZE
-RESIZE =            (int(640/4), int(480/4))
-INPUT_SIZE =        (int(384/4), int(384/4))
-INPUT_SIZE_TARGET = (int(384/4), int(384/4))
+RESIZE =            (int(640*2), int(480*2))
+INPUT_SIZE =        (int(640*1), int(640*1))
+INPUT_SIZE_TARGET = (int(640*1), int(640*1))
 IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
 
 NUM_TEST = 100
@@ -181,8 +183,8 @@ BEST_DIS2_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_DIS2_MODEL.pth'
 # UMD
 ################
 
-# ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/'
-ROOT_DATA_PATH = '/home/akeaveny/datasets/DomainAdaptation/UMD/'
+ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/'
+# ROOT_DATA_PATH = '/home/akeaveny/datasets/DomainAdaptation/UMD/'
 USE_DEPTH_IMGS = True
 REMAP_LABEL = False
 

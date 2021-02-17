@@ -77,8 +77,6 @@ def main():
         model = DeeplabDepth(pretrained=False)
     elif config.MODEL == 'DeepLabMulti':
         model = DeeplabMulti(pretrained=False)
-    elif config.MODEL == 'DeepLabMultiDepth':
-        model = DeeplabMultiDepth(pretrained=False)
     elif config.MODEL == 'DeepLabv3':
         model = DeepLabv3(pretrained=False)
     elif config.MODEL == 'DeepLabv3Depth':

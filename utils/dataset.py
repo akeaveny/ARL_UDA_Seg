@@ -54,7 +54,7 @@ class BasicDataSet(data.Dataset):
                  ### PRE-PROCESSING
                  mean=config.IMG_MEAN,
                  resize=config.RESIZE,
-                 crop_size=config.INPUT_SIZE,
+                 crop_size=config.INPUT_SIZE_TARGET,
                  ignore_label=255,
                  ### IMGAUG
                  apply_imgaug=False):
@@ -269,8 +269,10 @@ class BasicDataSet(data.Dataset):
 
 if __name__ == '__main__':
     dst = BasicDataSet(
-                       # dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN, ### SYN
-                       dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,    ### REAL
+                       dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN, ### SYN
+                       crop_size=config.INPUT_SIZE_TARGET,
+                       # dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,    ### REAL
+                       # crop_size=config.INPUT_SIZE_TARGET,
                        gta5_remap_label_idx=False,
                        extend_dataset=False,
                        apply_imgaug=False,

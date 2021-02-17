@@ -22,10 +22,12 @@
     <list default="true" id="29a03fb2-ddb5-437d-815b-e92da5b51c91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cfg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cfg.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/discriminator.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/discriminator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/train_segmentation.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_segmentation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/helper_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/helper_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
