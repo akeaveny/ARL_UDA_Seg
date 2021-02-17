@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import torch
+import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -26,6 +27,13 @@ from tqdm import tqdm
 
 def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_loader,test_loader,writer):
     """TRAIN WITH DOMAIN ADAPTATION USING ADAPTSEGNET"""
+
+    ######################
+    # DIS
+    ######################
+
+    upsample_source = nn.Upsample(size=config.INPUT_SIZE, mode='bilinear', align_corners=True)
+    upsample_target = nn.Upsample(size=config.INPUT_SIZE_TARGET, mode='bilinear', align_corners=True)
 
     ######################
     # LOSS
@@ -138,6 +146,9 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
             writer.add_scalar('SegLoss/loss_seg_value1', loss_seg_value1, i_iter)
             writer.add_scalar('SegLoss/loss_seg_value2', loss_seg_value2, i_iter)
 
+            ######################
+            ######################
+
             # train with target
             _, batch = target_loader.__next__()
             images, labels, depths = batch['image'], batch['label'], batch['depth']
@@ -155,8 +166,8 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
                 pred_target_aux, pred_target_main = model(images, depths)
             target_pred = pred_target_main[0, :, :]
 
-            D_out1 = model_D1(F.softmax(pred_target_aux))
-            D_out2 = model_D2(F.softmax(pred_target_main))
+            D_out1 = upsample_target(model_D1(F.softmax(pred_target_aux)))
+            D_out2 = upsample_target(model_D2(F.softmax(pred_target_main)))
 
             loss_adv_target1 = bce_loss(D_out1, helper_utils.fill_DA_label(D_out1.data.size(), source_label))
             loss_adv_target2 = bce_loss(D_out2, helper_utils.fill_DA_label(D_out2.data.size(), source_label))
@@ -173,7 +184,7 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
             writer.add_scalar('ADVLoss/seg_adv_loss2', loss_adv_target_value2, i_iter)
 
             ######################
-            # train G
+            # train D
             ######################
 
             # bring back requires_grad

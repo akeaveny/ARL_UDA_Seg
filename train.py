@@ -119,7 +119,7 @@ def main():
                                config.DATA_DIRECTORY_SOURCE_TRAIN,
                                gta5_remap_label_idx=False,
                                ### EXTENDING DATASET
-                               extend_dataset=True,
+                               extend_dataset=False,
                                max_iters=config.NUM_STEPS,
                                ### PRE-PROCESSING
                                mean=config.IMG_MEAN, crop_size=config.INPUT_SIZE_TARGET, ignore_label=config.IGNORE_LABEL,
@@ -127,7 +127,7 @@ def main():
                                apply_imgaug=True,
                                ### DEPTH
                                use_depth_imgs=config.USE_DEPTH_IMGS)
-        assert (len(source_dataset) >= config.NUM_STEPS)
+        # assert (len(source_dataset) >= config.NUM_STEPS)
 
         source_loader = enumerate(DataLoader(source_dataset,
                                            batch_size=config.BATCH_SIZE,
@@ -145,7 +145,7 @@ def main():
                            dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,      # REAL
                            gta5_remap_label_idx=config.REMAP_LABEL,
                            ### EXTENDING DATASET
-                           extend_dataset=True,
+                           extend_dataset=False,
                            max_iters=config.NUM_STEPS,
                            ### PRE-PROCESSING
                            mean=config.IMG_MEAN, crop_size=config.INPUT_SIZE, ignore_label=config.IGNORE_LABEL,
@@ -153,7 +153,7 @@ def main():
                            apply_imgaug=True,
                            ### DEPTH
                            use_depth_imgs=config.USE_DEPTH_IMGS)
-    assert (len(target_dataset) >= config.NUM_STEPS)
+    # assert (len(target_dataset) >= config.NUM_STEPS)
 
     target_loader = enumerate(DataLoader(target_dataset,
                                          batch_size=config.BATCH_SIZE,

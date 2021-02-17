@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import torch
+import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -26,6 +27,13 @@ from tqdm import tqdm
 
 def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,writer):
     """TRAIN WITH DOMAIN ADAPTATION USING ADAPTSEGNET"""
+
+    ######################
+    # DIS
+    ######################
+
+    upsample_source = nn.Upsample(size=config.INPUT_SIZE, mode='bilinear', align_corners=True)
+    upsample_target = nn.Upsample(size=config.INPUT_SIZE_TARGET, mode='bilinear', align_corners=True)
 
     ######################
     # LOSS
@@ -151,7 +159,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
 
             weight_map = helper_utils.weightmap(F.softmax(pred_target_aux, dim=1), F.softmax(pred_target_main, dim=1))
 
-            D_out = model_D(F.softmax(pred_target_aux + pred_target_main, dim=1))
+            D_out = upsample_target(model_D(F.softmax(pred_target_aux + pred_target_main, dim=1)))
 
             #############################
             # Adaptive Adversarial Loss
@@ -212,7 +220,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             pred_source_aux = pred_source_aux.detach()
             pred_source_main = pred_source_main.detach()
 
-            D_source_out = model_D(F.softmax(pred_source_aux + pred_source_main, dim=1))
+            D_source_out = upsample_source(model_D(F.softmax(pred_source_aux + pred_source_main, dim=1)))
             loss_source_D = bce_loss(D_source_out, helper_utils.fill_DA_label(D_source_out.data.size(), source_label))
 
             loss_source_D.backward()
@@ -223,7 +231,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             pred_target_main = pred_target_main.detach()
             weight_map = weight_map.detach()
 
-            D_target_out = model_D(F.softmax(pred_target_aux + pred_target_main, dim=1))
+            D_target_out = upsample_target(model_D(F.softmax(pred_target_aux + pred_target_main, dim=1)))
 
             # Adaptive Adversarial Loss
             if (i_iter > config.PREHEAT_STEPS):

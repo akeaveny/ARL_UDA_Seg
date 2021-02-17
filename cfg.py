@@ -18,7 +18,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'CLAN'
 EXP_DATASET_NAME    = 'UMD_Syn_RGBD_SE'
-EXP_NUM             = 'v0'
+EXP_NUM             = 'v1'
 
 #######################################
 #######################################
@@ -80,7 +80,7 @@ RANDOM_SEED = 1234
 NUM_STEPS =      250000
 NUM_STEPS_STOP = 150000 # early stopping
 
-BATCH_SIZE = 2
+BATCH_SIZE = 1
 ITER_SIZE = 1
 NUM_WORKERS = 4
 
@@ -100,9 +100,9 @@ BETA_2 = 0.99
 IMG_MEAN = [94.2079, 73.0177, 71.1790, 135.5964]              # UMD REAL RGB+D
 
 ### IMG SIZE
-RESIZE =            (int(640/1), int(480/1))
-INPUT_SIZE =        (int(384/1), int(384/1))
-INPUT_SIZE_TARGET = (int(384/1), int(384/1))
+RESIZE =            (int(640/4), int(480/4))
+INPUT_SIZE =        (int(384/4), int(384/4))
+INPUT_SIZE_TARGET = (int(384/4), int(384/4))
 IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
 
 NUM_TEST = 100
@@ -181,7 +181,8 @@ BEST_DIS2_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_DIS2_MODEL.pth'
 # UMD
 ################
 
-ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/'
+# ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/'
+ROOT_DATA_PATH = '/home/akeaveny/datasets/DomainAdaptation/UMD/'
 USE_DEPTH_IMGS = True
 REMAP_LABEL = False
 
