@@ -116,10 +116,11 @@ def main():
         print("loading source ..")
 
         source_dataset = BasicDataSet(
-                                   config.DATA_DIRECTORY_SOURCE_TRAIN,
-                                   ### PRE-PROCESSING
+                                   ### SYN
+                                   dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
                                    resize=config.RESIZE,
                                    mean=config.IMG_MEAN,
+                                   std=config.IMG_STD,
                                    crop_size=config.INPUT_SIZE,
                                    ### DEPTH
                                    use_depth_imgs=config.USE_DEPTH_IMGS,
@@ -149,11 +150,13 @@ def main():
                             dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
                             resize=config.RESIZE,
                             mean=config.IMG_MEAN,
+                            std=config.IMG_STD,
                             crop_size=config.INPUT_SIZE,
-                            ### REAL
+                            ### TODO: REAL or REAL TARGET!!!!
                             # dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
                             # resize=config.RESIZE_TARGET,
                             # mean=config.IMG_MEAN_TARGET,
+                            # std=config.IMG_STD_TARGET,
                             # crop_size=config.INPUT_SIZE_TARGET,
                             ### DEPTH
                             use_depth_imgs=config.USE_DEPTH_IMGS,
@@ -178,21 +181,23 @@ def main():
     ######################
     print("loading val ..")
 
-    dataset = BasicDataSet(config.DATA_DIRECTORY_TARGET_VAL,
-                               ### PRE-PROCESSING
-                               resize=config.RESIZE_TARGET,
-                               mean=config.IMG_MEAN_TARGET,
-                               crop_size=config.INPUT_SIZE_TARGET,
-                               ### DEPTH
-                               use_depth_imgs=config.USE_DEPTH_IMGS,
-                               ### MASK
-                               gta5_remap_label_idx=False,
-                               ignore_label=config.IGNORE_LABEL,
-                               ### EXTENDING DATASET
-                               extend_dataset=False,
-                               max_iters=config.NUM_STEPS,
-                               ### IMGAUG
-                               apply_imgaug=True)
+    dataset = BasicDataSet(
+                           ### VAL
+                           dataset_dir=config.DATA_DIRECTORY_TARGET_VAL,
+                           resize=config.RESIZE_TARGET,
+                           mean=config.IMG_MEAN_TARGET,
+                           std=config.IMG_STD_TARGET,
+                           crop_size=config.INPUT_SIZE_TARGET,
+                           ### DEPTH
+                           use_depth_imgs=config.USE_DEPTH_IMGS,
+                           ### MASK
+                           gta5_remap_label_idx=False,
+                           ignore_label=config.IGNORE_LABEL,
+                           ### EXTENDING DATASET
+                           extend_dataset=False,
+                           max_iters=config.NUM_STEPS,
+                           ### IMGAUG
+                           apply_imgaug=False)
 
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)

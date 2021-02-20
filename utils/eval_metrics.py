@@ -49,7 +49,8 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
 
     ######################
     ######################
-    model.eval()
+    # model.eval()
+    model.train() # todo: need with small bs with BatchNorm2d()
 
     for image_idx, batch in enumerate(test_loader):
 
@@ -58,20 +59,23 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
         labels = labels.to(device=config.GPU, dtype=torch.long)
         depths = depths.to(device=config.GPU, dtype=torch.float32)
 
-        if config.MODEL == 'DeepLab' or config.MODEL == 'DeepLabv3':
-            # for depth based training
-            if config.NUM_CHANNELS == 1:
-                pred_test_main = model(depths)
-            else:
+        with torch.no_grad():
+            if config.MODEL == 'DeepLab' or config.MODEL == 'DeepLabv3':
+                # for depth based training
+                if config.NUM_CHANNELS == 1:
+                    pred_test_main = model(depths)
+                else:
+                    pred_test_main = model(images)
+            elif config.MODEL == 'DeepLabDepth' or config.MODEL == 'DeepLabv3Depth':
+                pred_test_main = model(images, depths)
+            elif config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
+                pred_test_aux, pred_test_main = model(images)
+            elif config.MODEL == 'DeepLabv3DepthMulti':
+                pred_test_aux, pred_test_main = model(images, depths)
+            elif config.MODEL == 'DeeplabVGG' or config.MODEL == 'Oracle':
                 pred_test_main = model(images)
-        elif config.MODEL == 'DeepLabDepth' or config.MODEL == 'DeepLabv3Depth':
-            pred_test_main = model(images, depths)
-        elif config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
-            pred_test_aux, pred_test_main = model(images)
-        elif config.MODEL == 'DeepLabv3DepthMulti':
-            pred_test_aux, pred_test_main = model(images, depths)
-        elif config.MODEL == 'DeeplabVGG' or config.MODEL == 'Oracle':
-            pred_test_main = model(images)
+
+            # todo: plot val loss
 
         images = helper_utils.cuda_2_numpy(images)
         depths = helper_utils.cuda_2_numpy(depths)

@@ -205,30 +205,30 @@ class ResNetDepth(nn.Module):
         x_resnet0 = self.bn1(x_resnet0)
         x_resnet0 = self.relu(x_resnet0)
         x_resnet0 = self.maxpool(x_resnet0)
-        x_resnet0 = self.se_resnet_1(rgb=x_resnet0, depth=x_depth_resnet0)
+        # x_resnet0 = self.se_resnet_1(rgb=x_resnet0, depth=x_depth_resnet0)
 
         # ResNet Block 1
         x_resnet1 = self.layer1(x_resnet0)
-        x_resnet1 = self.se_resnet_2(rgb=x_resnet1, depth=x_depth_resnet1)
+        # x_resnet1 = self.se_resnet_2(rgb=x_resnet1, depth=x_depth_resnet1)
         low_level_rgb_feat = x_resnet1
         # ResNet Block 2
         x_resnet2 = self.layer2(x_resnet1)
-        x_resnet2 = self.se_resnet_3(rgb=x_resnet2, depth=x_depth_resnet2)
+        # x_resnet2 = self.se_resnet_3(rgb=x_resnet2, depth=x_depth_resnet2)
         # ResNet Block 3
         x_resnet3 = self.layer3(x_resnet2)
-        x_resnet3 = self.se_resnet_4(rgb=x_resnet3, depth=x_depth_resnet3)
+        # x_resnet3 = self.se_resnet_4(rgb=x_resnet3, depth=x_depth_resnet3)
         # ResNet Block 4
         x_resnet4 = self.layer4(x_resnet3)
-        x_resnet4 = self.se_resnet_5(rgb=x_resnet4, depth=x_depth_resnet4)
+        # x_resnet4 = self.se_resnet_5(rgb=x_resnet4, depth=x_depth_resnet4)
 
         ###########################
-        ### TODO: Addition or Concat (see paper ..)
+        ### TODO: Concat
         ###########################
 
-        # x_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
-        ### x += x_depth
+        x_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
+        return x_cat, low_level_rgb_feat
 
-        return x_resnet4, low_level_rgb_feat
+        # return x_resnet4, low_level_rgb_feat
 
     #########################
     #########################
@@ -335,7 +335,7 @@ class DeepLabv3Depth(nn.Module):
 
         # ResNet 101
         self.resnet_rgbd_features = ResNetDepth101(nRGBChannels, nDChannels, os, pretrained=pretrained)
-        resnet_rgbd_feats = int(2048*1)
+        resnet_rgbd_feats = int(2048*2)
         resnet_rgbd_low_level_feats = int(256*1)
 
         # ASPP

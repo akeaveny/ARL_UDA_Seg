@@ -53,7 +53,6 @@ class BasicDataSet(data.Dataset):
                  max_iters=int(250e3),
                  ### PRE-PROCESSING
                  mean=config.IMG_MEAN,
-                 std=config.IMG_STD,
                  resize=config.RESIZE,
                  crop_size=config.INPUT_SIZE_TARGET,
                  ignore_label=255,
@@ -73,7 +72,6 @@ class BasicDataSet(data.Dataset):
             self.depth_suffix = depth_suffix
         ### pre-processing
         self.mean = mean
-        self.std = std
         self.resize = resize
         self.crop_size = crop_size
         self.ignore_label = ignore_label
@@ -221,13 +219,14 @@ class BasicDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint16)
         # helper_utils.print_depth_info(depth)
 
-        self.max_depth = int(4.5e3)
+        self.max_depth = int(5e3)
         depth = np.clip(depth, a_min=0, a_max=self.max_depth)
-        # helper_utils.print_depth_info(depth)
-
         depth = depth / self.max_depth * (2 ** 8 - 1)
-        # depth = depth / np.max(depth) * (2 ** 8 - 1)
+
+        ### depth = depth / np.max(depth) * (2 ** 8 - 1)
+
         depth = np.array(depth, dtype=np.uint8)
+        helper_utils.print_depth_info(depth)
 
         ##################
         ### RESIZE & CROP
@@ -268,9 +267,9 @@ class BasicDataSet(data.Dataset):
         # triplicate depth
         # depth = np.array(skimage.color.gray2rgb(depth), dtype=np.uint8)
 
-        image = helper_utils.numpy_2_torch(image, mean=self.mean, std=self.std, is_rgb=True)
+        image = helper_utils.numpy_2_torch(image, mean=self.mean, is_rgb=True)
         label = helper_utils.numpy_2_torch(label)
-        depth = helper_utils.numpy_2_torch(depth, mean=self.mean,  std=self.std, is_depth=True)
+        depth = helper_utils.numpy_2_torch(depth, mean=self.mean, is_depth=True)
 
         return {
             'image': image.copy(),
@@ -281,15 +280,13 @@ class BasicDataSet(data.Dataset):
 if __name__ == '__main__':
     dst = BasicDataSet(
                         ### SYN
-                        dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
+                        dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN_DR,
                         mean=config.IMG_MEAN,
-                        std=config.IMG_STD,
                         resize=config.RESIZE,
                         crop_size=config.INPUT_SIZE,
                         ### REAL
                         # dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,
                         # mean=config.IMG_MEAN_TARGET,
-                        # std=config.IMG_STD_TARGET,
                         # resize=config.RESIZE_TARGET,
                         # crop_size=config.INPUT_SIZE_TARGET,
                         ### DEPTH
@@ -298,18 +295,13 @@ if __name__ == '__main__':
                         gta5_remap_label_idx=False,
                         ignore_label=config.IGNORE_LABEL,
                         ### EXTENDING DATASET
-                        extend_dataset=True,
-                        max_iters=1000,
+                        extend_dataset=False,
+                        max_iters=10,
                         ### IMGAUG
                         apply_imgaug=False)
     trainloader = data.DataLoader(dst, batch_size=1)
     rgb_mean, rgb_std = 0, 0
     depth_mean, depth_std = 0, 0
-    nb_bins = 256
-    count_r = np.zeros(nb_bins)
-    count_g = np.zeros(nb_bins)
-    count_b = np.zeros(nb_bins)
-    count_d = np.zeros(nb_bins)
     print("Dataset has: {}".format(len(trainloader)))
     for i, data in enumerate(trainloader):
         imgs, labels, depths = data['image'], data['label'], data['depth']
@@ -328,60 +320,33 @@ if __name__ == '__main__':
         img_stats = img_stats.view(img_stats.size(0), -1)
         depth_mean += img_stats.mean(1).sum(0)
         depth_std += img_stats.std(1).sum(0)
+        # if i >= 100: break
         #######################
-        # torch 2 numpy
         #######################
-        imgs = helper_utils.torch_2_numpy(imgs, mean=dst.mean, std=dst.std, is_rgb=True)
-        depths = helper_utils.torch_2_numpy(depths, mean=dst.mean, std=dst.std, is_depth=True)
+        imgs = helper_utils.torch_2_numpy(imgs, mean=dst.mean, is_rgb=True)
+        depths = helper_utils.torch_2_numpy(depths, mean=dst.mean, is_depth=True)
         labels = helper_utils.torch_2_numpy(labels)
-        #######################
-        ### histogram
-        #######################
+        labels = helper_utils.colorize_mask(labels)
+        ###
         # helper_utils.print_class_labels(labels)
         # helper_utils.print_depth_info(imgs)
         # helper_utils.print_depth_info(depths)
-        ### RGB
-        hist_r = np.histogram(imgs[0], bins=nb_bins, range=[0, 255])
-        hist_g = np.histogram(imgs[1], bins=nb_bins, range=[0, 255])
-        hist_b = np.histogram(imgs[2], bins=nb_bins, range=[0, 255])
-        count_r += hist_r[0]
-        count_g += hist_g[0]
-        count_b += hist_b[0]
-        ### Depth
-        hist_d = np.histogram(depths, bins=nb_bins, range=[0, 255])
-        count_d += hist_d[0]
+        #######################
         #######################
         ### cv2
-        #######################
         cv2.imshow('rgb', cv2.cvtColor(imgs, cv2.COLOR_BGR2RGB))
-        cv2.imshow('label', helper_utils.colorize_mask(labels))
+        cv2.imshow('label', labels)
         if dst.use_depth_imgs:
             cv2.imshow('depth', np.array(depths, dtype=np.uint8))
             cv2.imshow('heatmap', cv2.applyColorMap(np.array(depths, dtype=np.uint8), cv2.COLORMAP_JET))
-        cv2.waitKey(1)
+        cv2.waitKey(0)
     #######################
     #######################
+    print(f'\nmax depth:{dst.max_depth}')
+    ###
     rgb_mean /= i
     rgb_std /= i
     print(f'RGB: mean:{rgb_mean}\nstd:{rgb_std}')
     depth_mean /= i
     depth_std /= i
     print(f'Depth: mean:{depth_mean}\nstd:{depth_std}')
-    #######################
-    #######################
-    ### rgb
-    plt.figure(figsize=(12, 6))
-    bins = hist_r[1]
-    plt.bar(bins[:-1], count_r, color='r', label='Red', alpha=0.33)
-    plt.axvline(x=rgb_mean[0], color='r', ls='--')
-    plt.bar(bins[:-1], count_g, color='g', label='Green', alpha=0.33)
-    plt.axvline(x=rgb_mean[1], color='g', ls='--')
-    plt.bar(bins[:-1], count_b, color='b', label='Blue', alpha=0.33)
-    plt.axvline(x=rgb_mean[2], color='b', ls='--')
-    plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
-    ### depth
-    plt.figure(figsize=(12, 6))
-    plt.bar(bins[:-1], count_d, color='k', label='depth', alpha=0.33)
-    plt.axvline(x=depth_mean, color='k', ls='--')
-    plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
-    plt.show()

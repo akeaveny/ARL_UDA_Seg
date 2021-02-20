@@ -22,8 +22,15 @@
     <list default="true" id="29a03fb2-ddb5-437d-815b-e92da5b51c91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cfg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cfg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/deeplabv3_depth.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_depth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/datasets/UMD/rename_umd_syn_dataset_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/datasets/UMD/rename_umd_syn_dataset_tools.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/eval_metrics.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/eval_metrics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/helper_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/helper_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,48 +94,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/utils/dataset.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="deeplab" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="ARL_UDA_Seg" />
-      <option name="INTERPRETER_OPTIONS" value="-W ignore" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="$USER_HOME$/anaconda3/envs/AdaptSegNet/bin/python" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/model" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/model/deeplab.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="deeplab_depth" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="ARL_UDA_Seg" />
-      <option name="INTERPRETER_OPTIONS" value="-W ignore" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="$USER_HOME$/anaconda3/envs/AdaptSegNet/bin/python" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/model" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/model/deeplab_depth.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -223,8 +188,6 @@
     </configuration>
     <list>
       <item itemvalue="Python.dataset" />
-      <item itemvalue="Python.deeplab" />
-      <item itemvalue="Python.deeplab_depth" />
       <item itemvalue="Python.deeplabv3" />
       <item itemvalue="Python.deeplabv3_depth" />
       <item itemvalue="Python.discriminator" />

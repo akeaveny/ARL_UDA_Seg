@@ -17,26 +17,23 @@ FRAMEWORK Selection:
 
 # TODO: prelim for naming
 FRAMEWORK           = 'Segmentation'
-EXP_DATASET_NAME    = 'UMD_Syn_RGBD_SE'
-EXP_NUM             = 'v1'
+EXP_DATASET_NAME    = 'UMD_Syn_D'
+EXP_NUM             = 'v69'
 
 #######################################
 #######################################
 
 '''
 MODEL Selection:
-'DeepLab'
-'DeepLabDepth'
-'DeepLabMulti'
 'DeepLabv3'
 'DeepLabv3Depth'
 'DeepLabv3Multi'
 'DeepLabv3DepthMulti'
 '''
 
-MODEL = 'DeepLabv3Depth'
+MODEL = 'DeepLabv3'
 LAMBDA_SEG = 1                 # 0.1 for AdaptSegNet with different classifiers
-NUM_CHANNELS        = 4        # RGB=3 or DEPTH=1 or RGB=4
+NUM_CHANNELS        = 3        # RGB=3 or DEPTH=1 or RGB=4
 NUM_RGB_CHANNELS    = NUM_CHANNELS - 1
 NUM_D_CHANNELS      = NUM_CHANNELS - 3
 
@@ -50,7 +47,7 @@ V3_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.
 
 StartIteration = 0
 RESTORE_CHECKPOINT = None
-BestFwb = None
+BestFwb = 0
 
 #######################################
 #######################################
@@ -65,12 +62,7 @@ RESTORE_TRAINED_MODEL_ORC = 'http://vllab1.ucmerced.edu/~whung/adaptSeg/cityscap
 RESTORE_TRAINED_MODEL = '/home/akeaveny/catkin_ws/src/ARL_UDA_Seg/snapshots/CLAN_GTA5_82000.pth'
 
 ### Ours
-# RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/trained_models/UMD/UMD_Real_RGB/Segmentation_UMD_Real_RGB_384x384_v0/BEST_SEG_MODEL.pth'
-# RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/trained_models/UMD/UMD_Real_D/Segmentation_UMD_Real_D_384x384_v0/BEST_SEG_MODEL.pth'
-# RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/trained_models/UMD/UMD_Real_RGBD_SE/Segmentation_UMD_Real_RGBD_SE_384x384_v0/BEST_SEG_MODEL.pth'
-
-# RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Syn_RGBD_SE/Segmentation_UMD_Syn_RGBD_SE_480x480_v1/BEST_SEG_MODEL.pth'
-RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Syn_RGBD_SE/Segmentation_UMD_Syn_RGBD_SE_384x384_v0/BEST_SEG_MODEL.pth'
+RESTORE_TRAINED_MODEL = '/home/akeaveny/git/ARL_UDA_Seg/snapshots/UMD_Syn_RGB/Segmentation_UMD_Syn_RGB_384x384_v69_DR/BEST_SEG_MODEL.pth'
 
 #######################################
 #######################################
@@ -84,7 +76,7 @@ NUM_STEPS_STOP = 150000 # early stopping
 
 BATCH_SIZE = 1
 ITER_SIZE = 1
-NUM_WORKERS = 4
+NUM_WORKERS = 2
 
 LEARNING_RATE = 2.5e-4
 POWER = 0.9
@@ -102,13 +94,17 @@ BETA_2 = 0.99
 # IMG_MEAN = [104.00698793, 116.66876762, 122.67891434]             # AdaptSegNet
 
 ### SYN UMD
-IMG_MEAN =   [147.1167, 127.1642, 128.9464, 162.40452575683594]
-RESIZE =     (int(640*1.35), int(480*1.35))
+# IMG_MEAN =   [148.0891, 127.3092, 128.1432, 160.96653747558594]
+# IMG_STD  =    [35.9957, 40.1409, 37.6695, 44.113277435302734]
+IMG_MEAN =   [148.0891, 127.3092, 128.1432, 160.96653747558594]
+IMG_STD  =    [35.9957, 40.1409, 37.6695, 44.113277435302734]
+RESIZE =     (int(640*1.25), int(480*1.25))
 INPUT_SIZE = (int(384*1), int(384*1))
 
 ### REAL UMD
 IMG_MEAN_TARGET =   [94.2079, 73.0177, 71.1790, 135.5964]             # 384x384 UMD REAL RGB+D
-RESIZE_TARGET =     (int(640*1), int(640*1))
+IMG_STD_TARGET =    [22.0351, 34.4843, 38.2678, 38.01744842529297]
+RESIZE_TARGET =     (int(640*1), int(480*1))
 INPUT_SIZE_TARGET = (int(384*1), int(384*1))
 
 IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
@@ -121,12 +117,12 @@ TEST_PRED_EXT = "_pred.png"
 #######################################
 ''' GAN configs '''
 
+LEARNING_RATE_D = 1e-4
+
 ################
 # AdaptSegNet
 ################
 GAN = 'Vanilla'
-
-LEARNING_RATE_D = 1e-4
 LAMBDA_ADV_TARGET1 = 0.0002
 LAMBDA_ADV_TARGET2 = 0.001
 
@@ -135,8 +131,8 @@ LAMBDA_ADV_TARGET2 = 0.001
 ################
 PREHEAT_STEPS = int(NUM_STEPS_STOP/20)
 
-LAMDA_WEIGHT = 0.01
-LAMBDA_ADV = 0.001
+LAMDA_WEIGHT = 0.01     # Weight Discrepancy Loss
+LAMBDA_ADV = 0.001      # Weighted BCE or Adaptive Adversarial Loss
 LAMBDA_LOCAL = 40
 EPSILON = 0.4
 
@@ -190,7 +186,6 @@ BEST_DIS2_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_DIS2_MODEL.pth'
 ################
 
 ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/'
-# ROOT_DATA_PATH = '/home/akeaveny/datasets/DomainAdaptation/UMD/'
 USE_DEPTH_IMGS = True
 REMAP_LABEL = False
 
@@ -201,6 +196,12 @@ IGNORE_LABEL = 255
 DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
 DATA_DIRECTORY_SOURCE_TRAIN = DATA_DIRECTORY + 'train/'
 
+DATA_DIRECTORY_PR = ROOT_DATA_PATH + 'PR/'
+DATA_DIRECTORY_SOURCE_TRAIN_PR = DATA_DIRECTORY_PR + 'train/'
+
+DATA_DIRECTORY_DR = ROOT_DATA_PATH + 'DR/'
+DATA_DIRECTORY_SOURCE_TRAIN_DR = DATA_DIRECTORY_DR + 'train/'
+
 ### target
 DATA_DIRECTORY_TARGET = ROOT_DATA_PATH + 'Real/'
 DATA_DIRECTORY_TARGET_TRAIN = DATA_DIRECTORY_TARGET + 'train/'
@@ -208,6 +209,6 @@ DATA_DIRECTORY_TARGET_VAL = DATA_DIRECTORY_TARGET + 'val/'
 DATA_DIRECTORY_TARGET_TEST = DATA_DIRECTORY_TARGET + 'test/'
 
 ### TEST
-TEST_SAVE_FOLDER = DATA_DIRECTORY_TARGET + 'test/pred2/'
+TEST_SAVE_FOLDER = DATA_DIRECTORY_TARGET + 'test/pred_dr1/'
 MIOU_TEST_INFO = ROOT_DIR_PATH + 'dataset/cityscapes_list/info.json'
 

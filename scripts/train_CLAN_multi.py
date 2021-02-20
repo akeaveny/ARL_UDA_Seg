@@ -140,6 +140,9 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             writer.add_scalar('SegLoss/loss_seg_value1', loss_seg_value1, i_iter)
             writer.add_scalar('SegLoss/loss_seg_value2', loss_seg_value2, i_iter)
 
+            #############################
+            #############################
+
             # train with target
             _, batch = target_loader.__next__()
             images, labels, depths = batch['image'], batch['label'], batch['depth']
@@ -235,9 +238,11 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
 
             # Adaptive Adversarial Loss
             if (i_iter > config.PREHEAT_STEPS):
-                loss_target_D = weighted_bce_loss(D_target_out, helper_utils.fill_DA_label(D_target_out.data.size(), target_label),
-                                             weight_map,
-                                             config.EPSILON, config.LAMBDA_LOCAL)
+                loss_target_D = weighted_bce_loss(input=D_target_out,
+                                                  target= helper_utils.fill_DA_label(D_target_out.data.size(), target_label),
+                                                  weight=weight_map,
+                                                  alpha=config.EPSILON,
+                                                  beta=config.LAMBDA_LOCAL)
             else:
                 loss_target_D = bce_loss(D_target_out, helper_utils.fill_DA_label(D_target_out.data.size(), target_label))
 

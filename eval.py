@@ -45,16 +45,23 @@ def main():
     # LOADING CITYSCAPE
     ######################
 
-    dataset = BasicDataSet(config.DATA_DIRECTORY_TARGET_TEST,
+    dataset = BasicDataSet(
+                           ### PRE-PROCESSING
+                           config.DATA_DIRECTORY_TARGET_TEST,
+                           resize=config.RESIZE_TARGET,
+                           mean=config.IMG_MEAN_TARGET,
+                           std=config.IMG_STD_TARGET,
+                           crop_size=config.INPUT_SIZE_TARGET,
+                           ### DEPTH
+                           use_depth_imgs=config.USE_DEPTH_IMGS,
+                           ### MASK
                            gta5_remap_label_idx=False,
+                           ignore_label=config.IGNORE_LABEL,
                            ### EXTENDING DATASET
                            extend_dataset=False,
-                           ### PRE-PROCESSING
-                           mean=config.IMG_MEAN, crop_size=config.INPUT_SIZE_TARGET, ignore_label=255,
+                           max_iters=config.NUM_STEPS,
                            ### IMGAUG
-                           apply_imgaug=False,
-                           ### DEPTH
-                           use_depth_imgs=config.USE_DEPTH_IMGS)
+                           apply_imgaug=False)
 
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)

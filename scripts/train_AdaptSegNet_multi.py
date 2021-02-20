@@ -171,9 +171,9 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
 
             loss_adv_target1 = bce_loss(D_out1, helper_utils.fill_DA_label(D_out1.data.size(), source_label))
             loss_adv_target2 = bce_loss(D_out2, helper_utils.fill_DA_label(D_out2.data.size(), source_label))
-            loss = config.LAMBDA_ADV_TARGET1 * loss_adv_target1 + config.LAMBDA_ADV_TARGET2 * loss_adv_target2
+            loss_adv = config.LAMBDA_ADV_TARGET1 * loss_adv_target1 + config.LAMBDA_ADV_TARGET2 * loss_adv_target2
 
-            loss = loss
+            loss = loss_adv
             loss.backward()
             loss_adv_target_value1 += loss_adv_target1.data.cpu().numpy()
             loss_adv_target_value2 += loss_adv_target2.data.cpu().numpy()
@@ -204,8 +204,8 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
             loss_D1 = bce_loss(D_out1, helper_utils.fill_DA_label(D_out1.data.size(), source_label))
             loss_D2 = bce_loss(D_out2, helper_utils.fill_DA_label(D_out2.data.size(), source_label))
 
-            loss_D1 = loss_D1
-            loss_D2 = loss_D2
+            loss_D1 = loss_D1 / 2
+            loss_D2 = loss_D2 / 2
 
             loss_D1.backward()
             loss_D2.backward()
@@ -223,8 +223,8 @@ def train_AdaptSegNet_multi(model, model_D1, model_D2,target_loader, source_load
             loss_D1 = bce_loss(D_out1, helper_utils.fill_DA_label(D_out1.data.size(), target_label))
             loss_D2 = bce_loss(D_out2, helper_utils.fill_DA_label(D_out2.data.size(), target_label))
 
-            loss_D1 = loss_D1
-            loss_D2 = loss_D2
+            loss_D1 = loss_D1 / 2
+            loss_D2 = loss_D2 / 2
 
             loss_D1.backward()
             loss_D2.backward()
