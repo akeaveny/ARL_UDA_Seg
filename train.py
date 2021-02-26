@@ -148,18 +148,18 @@ def main():
 
     dataset = BasicDataSet(
                             ### SYN
-                            dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
-                            use_dr_and_pr_images=True,
-                            mean=config.IMG_MEAN,
-                            std=config.IMG_STD,
-                            resize=config.RESIZE,
-                            crop_size=config.INPUT_SIZE,
+                            # dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
+                            # use_dr_and_pr_images=True,
+                            # mean=config.IMG_MEAN,
+                            # std=config.IMG_STD,
+                            # resize=config.RESIZE,
+                            # crop_size=config.INPUT_SIZE,
                             ### TODO: REAL !!!
-                            # dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
-                            # resize=config.RESIZE_TARGET,
-                            # mean=config.IMG_MEAN_TARGET,
-                            # std=config.IMG_STD_TARGET,
-                            # crop_size=config.INPUT_SIZE_TARGET,
+                            dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
+                            resize=config.RESIZE_TARGET,
+                            mean=config.IMG_MEAN_TARGET,
+                            std=config.IMG_STD_TARGET,
+                            crop_size=config.INPUT_SIZE_TARGET,
                             ### MASK
                             gta5_remap_label_idx=False,
                             ignore_label=config.IGNORE_LABEL,

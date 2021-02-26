@@ -217,10 +217,10 @@ class BasicDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint16)
         # helper_utils.print_depth_info(depth)
 
-        if np.max(depth) > int(2**8-1):
-            depth = depth / 6500 * (2 ** 8 - 1)
+        # if np.max(depth) > int(2**8-1):
+        #     depth = depth / 6500 * (2 ** 8 - 1)
 
-        # depth = depth / np.max(depth) * (2 ** 8 - 1)
+        depth = depth / np.max(depth) * (2 ** 8 - 1)
         depth = np.array(depth, dtype=np.uint8)
         # helper_utils.print_depth_info(depth)
 

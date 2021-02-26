@@ -22,17 +22,9 @@
     <list default="true" id="29a03fb2-ddb5-437d-815b-e92da5b51c91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cfg.py" beforeDir="false" afterPath="$PROJECT_DIR$/cfg.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/deeplabv3_depth_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_depth_multi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/deeplabv3_multi (copy).py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/deeplabv3_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/deeplabv3_multi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_AdaptSegNet_multi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_CLAN_multi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/train_segmentation.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_segmentation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/train_segmentation_multi.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/train_segmentation_multi.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/eval_metrics.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/eval_metrics.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +53,7 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$/model/deeplabv3_depth_multi.py" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.dataset">
+  <component name="RunManager" selected="Python.deeplabv3_depth_multi">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="AdaptSegNet" />
       <option name="INTERPRETER_OPTIONS" value="" />
