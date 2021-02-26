@@ -3,6 +3,8 @@ from os import listdir
 from os.path import splitext
 from glob import glob
 
+import copy
+
 import logging
 
 import numpy as np
@@ -40,7 +42,7 @@ class BasicDataSet(data.Dataset):
     def __init__(self,
                  dataset_dir,
                  gta5_remap_label_idx=False,
-                 use_depth_imgs=False,
+                 use_dr_and_pr_images=False,
                  ### FOLDER MUST BE CORRECTLY FORMATTED
                  rgb_dir='rgb/',
                  rgb_suffix='',
@@ -62,21 +64,23 @@ class BasicDataSet(data.Dataset):
 
         self.dataset_dir = dataset_dir
         self.gta5_remap_label_idx = gta5_remap_label_idx
-        self.use_depth_imgs = use_depth_imgs
+        self.use_dr_and_pr_images = use_dr_and_pr_images
         ### FOLDER MUST BE CORRECTLY FORMATTED
         self.rgb_dir = self.dataset_dir + rgb_dir
         self.rgb_suffix = rgb_suffix
         self.masks_dir = self.dataset_dir + masks_dir
         self.masks_suffix = masks_suffix
-        if self.use_depth_imgs:
-            self.depth_dir = self.dataset_dir + depth_dir
-            self.depth_suffix = depth_suffix
+        self.depth_dir = self.dataset_dir + depth_dir
+        self.depth_suffix = depth_suffix
         ### pre-processing
         self.mean = mean
         self.std = std
         self.resize = resize
         self.crop_size = crop_size
         self.ignore_label = ignore_label
+
+        if self.use_dr_and_pr_images:
+            print(f'Using PR and DR Synthetic Images ..')
 
         ################################
         ### EXTENDING DATASET
@@ -86,11 +90,8 @@ class BasicDataSet(data.Dataset):
 
         self.rgb_ids = [splitext(file)[0] for file in listdir(self.rgb_dir) if not file.startswith('.')]
         self.masks_ids = [splitext(file)[0] for file in listdir(self.masks_dir) if not file.startswith('.')]
-        if self.use_depth_imgs:
-            self.depth_ids = [splitext(file)[0] for file in listdir(self.depth_dir) if not file.startswith('.')]
-            # assert(len(self.rgb_ids) == len(self.masks_ids) == len(self.depth_ids))
-        else:
-            assert(len(self.rgb_ids) == len(self.masks_ids))
+        self.depth_ids = [splitext(file)[0] for file in listdir(self.depth_dir) if not file.startswith('.')]
+        assert(len(self.rgb_ids) == len(self.masks_ids) == len(self.depth_ids))
         print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         # creating larger dataset
@@ -209,25 +210,33 @@ class BasicDataSet(data.Dataset):
         ##################
         ### TODO: DEPTH
         ##################
-        if self.use_depth_imgs:
-            depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
-            assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
-            depth = Image.fromarray(np.array(Image.open(depth_file[0])).astype("uint16"))
-        else:
-            depth = Image.fromarray(np.zeros(shape=(image.size[1], image.size[0])))
-        # helper_utils.print_depth_info(depth)
+        depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
+        assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
 
-        ### convert depth to 8 bit image
+        depth = cv2.imread(depth_file[0], -1)
         depth = np.array(depth, dtype=np.uint16)
         # helper_utils.print_depth_info(depth)
 
-        self.max_depth = int(4.5e3)
-        depth = np.clip(depth, a_min=0, a_max=self.max_depth)
-        # helper_utils.print_depth_info(depth)
+        if np.max(depth) > int(2**8-1):
+            depth = depth / 6500 * (2 ** 8 - 1)
 
-        depth = depth / self.max_depth * (2 ** 8 - 1)
         # depth = depth / np.max(depth) * (2 ** 8 - 1)
         depth = np.array(depth, dtype=np.uint8)
+        # helper_utils.print_depth_info(depth)
+
+        ##################
+        ##################
+
+        if self.use_dr_and_pr_images:
+            if int(idx) <= config.PR_NUM_IMAGES:
+                # print(f'PR image ..')
+                self.resize = config.PR_RESIZE
+                self.mean = config.PR_IMG_MEAN
+                self.std = config.PR_IMG_STD
+            else:
+                self.resize = config.DR_RESIZE
+                self.mean = config.DR_IMG_MEAN
+                self.std = config.DR_IMG_STD
 
         ##################
         ### RESIZE & CROP
@@ -239,7 +248,7 @@ class BasicDataSet(data.Dataset):
 
         image = cv2.resize(image, self.resize, interpolation=cv2.INTER_CUBIC)
         label = cv2.resize(label, self.resize, interpolation=cv2.INTER_NEAREST)
-        depth = cv2.resize(depth, self.resize, interpolation=cv2.INTER_CUBIC)
+        depth = cv2.resize(depth, self.resize, interpolation=cv2.INTER_NEAREST)
 
         image = self.crop(image, is_img=True)
         label = self.crop(label)
@@ -265,35 +274,32 @@ class BasicDataSet(data.Dataset):
         image = np.array(image, dtype=np.uint8)
         label = np.array(label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
-        # triplicate depth
-        # depth = np.array(skimage.color.gray2rgb(depth), dtype=np.uint8)
 
         image = helper_utils.numpy_2_torch(image, mean=self.mean, std=self.std, is_rgb=True)
-        label = helper_utils.numpy_2_torch(label)
         depth = helper_utils.numpy_2_torch(depth, mean=self.mean,  std=self.std, is_depth=True)
+        label = helper_utils.numpy_2_torch(label)
 
         return {
             'image': image.copy(),
             'label': label.copy(),
-            'depth': depth.copy()
+            'depth': depth.copy(),
         }
 
 if __name__ == '__main__':
     dst = BasicDataSet(
                         ### SYN
-                        dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
-                        mean=config.IMG_MEAN,
-                        std=config.IMG_STD,
-                        resize=config.RESIZE,
-                        crop_size=config.INPUT_SIZE,
+                        # dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
+                        # use_dr_and_pr_images=True,
+                        # mean=config.IMG_MEAN,
+                        # std=config.IMG_STD,
+                        # resize=config.RESIZE,
+                        # crop_size=config.INPUT_SIZE,
                         ### REAL
-                        # dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,
-                        # mean=config.IMG_MEAN_TARGET,
-                        # std=config.IMG_STD_TARGET,
-                        # resize=config.RESIZE_TARGET,
-                        # crop_size=config.INPUT_SIZE_TARGET,
-                        ### DEPTH
-                        use_depth_imgs=config.USE_DEPTH_IMGS,
+                        dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
+                        mean=config.IMG_MEAN_TARGET,
+                        std=config.IMG_STD_TARGET,
+                        resize=config.RESIZE_TARGET,
+                        crop_size=config.INPUT_SIZE_TARGET,
                         ### MASK
                         gta5_remap_label_idx=False,
                         ignore_label=config.IGNORE_LABEL,
@@ -305,7 +311,7 @@ if __name__ == '__main__':
     trainloader = data.DataLoader(dst, batch_size=1)
     rgb_mean, rgb_std = 0, 0
     depth_mean, depth_std = 0, 0
-    nb_bins = 256
+    nb_bins = int(2**8)
     count_r = np.zeros(nb_bins)
     count_g = np.zeros(nb_bins)
     count_b = np.zeros(nb_bins)
@@ -316,30 +322,32 @@ if __name__ == '__main__':
         if i % 100 == 0:
             print(f'{i}/{len(trainloader)} ..')
         #######################
-        ### img mean and std
-        #######################
-        # rgb
-        img_stats = imgs
-        img_stats = img_stats.view(img_stats.size(0), img_stats.size(1), -1)
-        rgb_mean += img_stats.mean(2).sum(0)
-        rgb_std += img_stats.std(2).sum(0)
-        # depth
-        img_stats = depths
-        img_stats = img_stats.view(img_stats.size(0), -1)
-        depth_mean += img_stats.mean(1).sum(0)
-        depth_std += img_stats.std(1).sum(0)
-        #######################
         # torch 2 numpy
         #######################
         imgs = helper_utils.torch_2_numpy(imgs, mean=dst.mean, std=dst.std, is_rgb=True)
         depths = helper_utils.torch_2_numpy(depths, mean=dst.mean, std=dst.std, is_depth=True)
         labels = helper_utils.torch_2_numpy(labels)
+        ###
+        # helper_utils.print_depth_info(imgs)
+        # helper_utils.print_class_labels(labels)
+        # helper_utils.print_depth_info(dst.depth_16bit)
+        # helper_utils.print_depth_info(depths)
+        #######################
+        ### img mean and std
+        #######################
+        # rgb
+        img_stats = imgs
+        img_stats = img_stats.reshape(3, -1)
+        rgb_mean += np.mean(img_stats, axis=1)
+        rgb_std += np.std(img_stats, axis=1)
+        # depth
+        img_stats = depths
+        img_stats = img_stats.reshape(1, -1)
+        depth_mean += np.mean(img_stats, axis=1)
+        depth_std += np.std(img_stats, axis=1)
         #######################
         ### histogram
         #######################
-        # helper_utils.print_class_labels(labels)
-        # helper_utils.print_depth_info(imgs)
-        # helper_utils.print_depth_info(depths)
         ### RGB
         hist_r = np.histogram(imgs[0], bins=nb_bins, range=[0, 255])
         hist_g = np.histogram(imgs[1], bins=nb_bins, range=[0, 255])
@@ -355,33 +363,35 @@ if __name__ == '__main__':
         #######################
         cv2.imshow('rgb', cv2.cvtColor(imgs, cv2.COLOR_BGR2RGB))
         cv2.imshow('label', helper_utils.colorize_mask(labels))
-        if dst.use_depth_imgs:
-            cv2.imshow('depth', np.array(depths, dtype=np.uint8))
-            cv2.imshow('heatmap', cv2.applyColorMap(np.array(depths, dtype=np.uint8), cv2.COLORMAP_JET))
+        cv2.imshow('depth', np.array(depths, dtype=np.uint8))
+        cv2.imshow('heatmap', cv2.applyColorMap(np.array(depths, dtype=np.uint8), cv2.COLORMAP_JET))
         cv2.waitKey(1)
     #######################
     #######################
     rgb_mean /= i
     rgb_std /= i
-    print(f'RGB: mean:{rgb_mean}\nstd:{rgb_std}')
+    print(f'\nRGB: mean:{rgb_mean}\nstd:{rgb_std}')
     depth_mean /= i
     depth_std /= i
     print(f'Depth: mean:{depth_mean}\nstd:{depth_std}')
     #######################
     #######################
+    bins = hist_r[1]
     ### rgb
     plt.figure(figsize=(12, 6))
-    bins = hist_r[1]
-    plt.bar(bins[:-1], count_r, color='r', label='Red', alpha=0.33)
+    plt.bar(hist_r[1][:-1], count_r, color='r', label='Red', alpha=0.33)
     plt.axvline(x=rgb_mean[0], color='r', ls='--')
-    plt.bar(bins[:-1], count_g, color='g', label='Green', alpha=0.33)
+    plt.bar(hist_g[1][:-1], count_g, color='g', label='Green', alpha=0.33)
     plt.axvline(x=rgb_mean[1], color='g', ls='--')
-    plt.bar(bins[:-1], count_b, color='b', label='Blue', alpha=0.33)
+    plt.bar(hist_b[1][:-1], count_b, color='b', label='Blue', alpha=0.33)
     plt.axvline(x=rgb_mean[2], color='b', ls='--')
     plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
     ### depth
     plt.figure(figsize=(12, 6))
-    plt.bar(bins[:-1], count_d, color='k', label='depth', alpha=0.33)
+    plt.bar(x=hist_d[1][:-1], height=count_d, color='k', label='depth', alpha=0.33)
     plt.axvline(x=depth_mean, color='k', ls='--')
+    plt.axvline(x=rgb_mean[0], color='r', ls='--')
+    plt.axvline(x=rgb_mean[1], color='g', ls='--')
+    plt.axvline(x=rgb_mean[2], color='b', ls='--')
     plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
     plt.show()

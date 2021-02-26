@@ -16,7 +16,9 @@ from model.deeplab_depth import DeeplabDepth
 from model.deeplab_multi import DeeplabMulti
 from model.deeplabv3 import DeepLabv3
 from model.deeplabv3_depth import DeepLabv3Depth
-from model.deeplab_vgg import DeeplabVGG
+from model.deeplabv3_multi import DeepLabv3Multi
+from model.deeplabv3_depth_multi import DeepLabv3DepthMulti
+from model.discriminator import FCDiscriminator
 
 from utils.dataset import BasicDataSet
 
@@ -52,8 +54,6 @@ def main():
                            mean=config.IMG_MEAN_TARGET,
                            std=config.IMG_STD_TARGET,
                            crop_size=config.INPUT_SIZE_TARGET,
-                           ### DEPTH
-                           use_depth_imgs=config.USE_DEPTH_IMGS,
                            ### MASK
                            gta5_remap_label_idx=False,
                            ignore_label=config.IGNORE_LABEL,
@@ -66,7 +66,7 @@ def main():
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(dataset), 1)
-    val_idx = np.random.choice(total_idx, size=int(100), replace=False)
+    val_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
     dataset = Subset(dataset, val_idx)
 
     test_loader = data.DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True)
@@ -88,6 +88,10 @@ def main():
         model = DeepLabv3(pretrained=False)
     elif config.MODEL == 'DeepLabv3Depth':
         model = DeepLabv3Depth(pretrained=False)
+    elif config.MODEL == 'DeepLabv3Multi':
+        model = DeepLabv3Multi(pretrained=config.LOAD_PRETRAINED_WEIGHTS)
+    elif config.MODEL == 'DeepLabv3DepthMulti':
+        model = DeepLabv3DepthMulti(pretrained=config.LOAD_PRETRAINED_WEIGHTS)
     else:
         assert "*** No Model Selected ***"
 

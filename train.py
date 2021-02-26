@@ -56,7 +56,7 @@ def main():
     ######################
     # LOAD MODEL
     ######################
-
+    print()
     # Create network
     if config.MODEL == 'DeepLab':
         model = Deeplab(pretrained=config.LOAD_PRETRAINED_WEIGHTS)
@@ -75,6 +75,8 @@ def main():
 
     # restore checkpoint
     if config.RESTORE_CHECKPOINT is not None:
+        print("restoring checkpoint weights .. {}".format(config.RESTORE_CHECKPOINT))
+        print(f"at Iteration={config.StartIteration} with Best Metric={config.BestFwb} ")
         if config.RESTORE_CHECKPOINT[:4] == 'http':
             model.load_state_dict(model_zoo.load_url(config.RESTORE_CHECKPOINT))
         else:
@@ -113,17 +115,16 @@ def main():
     # LOADING SOURCE
     ######################
     if config.FRAMEWORK == 'AdaptSegNet' or config.FRAMEWORK == 'CLAN':
-        print("loading source ..")
+        print("\nloading source ..")
 
         source_dataset = BasicDataSet(
                                    ### SYN
                                    dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
-                                   resize=config.RESIZE,
+                                   use_dr_and_pr_images=True,
                                    mean=config.IMG_MEAN,
                                    std=config.IMG_STD,
+                                   resize=config.RESIZE,
                                    crop_size=config.INPUT_SIZE,
-                                   ### DEPTH
-                                   use_depth_imgs=config.USE_DEPTH_IMGS,
                                    ### MASK
                                    gta5_remap_label_idx=config.REMAP_LABEL,
                                    ignore_label=config.IGNORE_LABEL,
@@ -143,43 +144,55 @@ def main():
     ######################
     # LOADING TARGET
     ######################
-    print("loading target ..")
+    print("\nloading target ..")
 
-    target_dataset = BasicDataSet(
+    dataset = BasicDataSet(
                             ### SYN
                             dataset_dir=config.DATA_DIRECTORY_SOURCE_TRAIN,
-                            resize=config.RESIZE,
+                            use_dr_and_pr_images=True,
                             mean=config.IMG_MEAN,
                             std=config.IMG_STD,
+                            resize=config.RESIZE,
                             crop_size=config.INPUT_SIZE,
-                            ### TODO: REAL or REAL TARGET!!!!
+                            ### TODO: REAL !!!
                             # dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
                             # resize=config.RESIZE_TARGET,
                             # mean=config.IMG_MEAN_TARGET,
                             # std=config.IMG_STD_TARGET,
                             # crop_size=config.INPUT_SIZE_TARGET,
-                            ### DEPTH
-                            use_depth_imgs=config.USE_DEPTH_IMGS,
                             ### MASK
                             gta5_remap_label_idx=False,
                             ignore_label=config.IGNORE_LABEL,
                             ### EXTENDING DATASET
                             extend_dataset=True,
-                            max_iters=config.NUM_STEPS,
+                            max_iters=int(config.NUM_STEPS+config.NUM_VAL_STEPS),
                             ### IMGAUG
                             apply_imgaug=True)
-    assert (len(target_dataset) >= config.NUM_STEPS)
+    assert (len(dataset) >= int(config.NUM_STEPS+config.NUM_VAL_STEPS))
 
+    ### SELECTING A SUBSET OF IMAGES
+    np.random.seed(config.RANDOM_SEED)
+    target_dataset, val_dataset = random_split(dataset, [config.NUM_STEPS, config.NUM_VAL_STEPS])
+
+    print(f"train has {len(target_dataset)} images ..")
     target_loader = enumerate(DataLoader(target_dataset,
                                          batch_size=config.BATCH_SIZE,
                                          shuffle=True,
                                          num_workers=config.NUM_WORKERS,
                                          pin_memory=True))
 
+    print(f"val has {len(val_dataset)} images ..")
+    val_loader = enumerate(DataLoader(dataset,
+                                      batch_size=config.BATCH_SIZE,
+                                      shuffle=True,
+                                      num_workers=config.NUM_WORKERS,
+                                      pin_memory=True))
+
     ######################
-    # LOADING TEST
+    # LOADING test
     ######################
-    print("loading val ..")
+    print("\nloading test ..")
+    print('eval in .. {}'.format(config.TEST_SAVE_FOLDER))
 
     dataset = BasicDataSet(
                            ### VAL
@@ -188,24 +201,22 @@ def main():
                            mean=config.IMG_MEAN_TARGET,
                            std=config.IMG_STD_TARGET,
                            crop_size=config.INPUT_SIZE_TARGET,
-                           ### DEPTH
-                           use_depth_imgs=config.USE_DEPTH_IMGS,
                            ### MASK
                            gta5_remap_label_idx=False,
                            ignore_label=config.IGNORE_LABEL,
                            ### EXTENDING DATASET
                            extend_dataset=False,
-                           max_iters=config.NUM_STEPS,
                            ### IMGAUG
                            apply_imgaug=False)
 
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(dataset), 1)
-    val_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
-    dataset = Subset(dataset, val_idx)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_dataset = Subset(dataset, test_idx)
 
-    test_loader = data.DataLoader(dataset,
+    print(f"test has {len(test_dataset)} images ..")
+    test_loader = data.DataLoader(test_dataset,
                                   batch_size=1,
                                   shuffle=False,
                                   pin_memory=True)
@@ -214,15 +225,18 @@ def main():
     ######################
     # UDA TRAINING
     ######################
+    print()
     try:
         if config.FRAMEWORK == 'Segmentation':
             train_segmentation(model,
                                    target_loader=target_loader,
+                                   val_loader=val_loader,
                                    test_loader=test_loader,
                                    writer=writer)
         if config.FRAMEWORK == 'SegmentationMulti':
             train_segmentation_multi(model,
                                      target_loader=target_loader,
+                                     val_loader=val_loader,
                                      test_loader=test_loader,
                                      writer=writer)
         elif config.FRAMEWORK == 'AdaptSegNet':

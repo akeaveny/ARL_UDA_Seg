@@ -51,15 +51,14 @@ def numpy_2_torch(numpy_img, mean=config.IMG_MEAN, std=config.IMG_STD,
 
     if is_rgb:
         torch_img = torch_img[:, :, ::-1]               # change to BGR
-        # torch_img = (torch_img - np.array(mean[0:-1], dtype=np.float32)) / np.array(std[0:-1], dtype=np.float32)
+        torch_img = (torch_img - np.array(mean[0:-1], dtype=np.float32)) / np.array(std[0:-1], dtype=np.float32)
         torch_img = torch_img.transpose((2, 0, 1))      # images are represented as [C, H, W] in torch
 
     if is_depth:
         torch_img = torch_img[np.newaxis, :, :]
         mean_ = np.array(mean[-1], dtype=np.float32)
         std_  = np.array(std[-1], dtype=np.float32)
-        # torch_img = (torch_img - mean_) / std_
-
+        torch_img = (torch_img - mean_) / std_
 
     return torch_img
 
@@ -70,13 +69,13 @@ def torch_2_numpy(torch_img, mean=config.IMG_MEAN, std=config.IMG_STD,
 
         if is_rgb:
             numpy_img = np.transpose(numpy_img, (1, 2, 0))  # images are represented as [C, H W] in torch
-            # numpy_img = (numpy_img * np.array(std[0:-1], dtype=np.float32)) + np.array(mean[0:-1], dtype=np.float32)
+            numpy_img = (numpy_img * np.array(std[0:-1], dtype=np.float32)) + np.array(mean[0:-1], dtype=np.float32)
             numpy_img = numpy_img[:, :, ::-1]               # change to BGR
 
         if is_depth:
             mean_ = np.array(mean[-1], dtype=np.float32)
             std_ = np.array(std[-1], dtype=np.float32)
-            # numpy_img = (numpy_img * std_) + mean_
+            numpy_img = (numpy_img * std_) + mean_
 
         return np.array(numpy_img, dtype=np.uint8)
 

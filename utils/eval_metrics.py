@@ -50,7 +50,7 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
     ######################
     ######################
     # model.eval()
-    model.train() # todo: need with small bs with BatchNorm2d()
+    model.train() # todo: needed with small bs with BatchNorm2d()
 
     for image_idx, batch in enumerate(test_loader):
 
@@ -60,22 +60,24 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
         depths = depths.to(device=config.GPU, dtype=torch.float32)
 
         with torch.no_grad():
-            if config.MODEL == 'DeepLab' or config.MODEL == 'DeepLabv3':
+            if config.MODEL == 'DeepLabv3':
                 # for depth based training
                 if config.NUM_CHANNELS == 1:
                     pred_test_main = model(depths)
                 else:
                     pred_test_main = model(images)
-            elif config.MODEL == 'DeepLabDepth' or config.MODEL == 'DeepLabv3Depth':
+            elif config.MODEL == 'DeepLabv3Depth':
                 pred_test_main = model(images, depths)
             elif config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
-                pred_test_aux, pred_test_main = model(images)
+                # for depth based training
+                if config.NUM_CHANNELS == 1:
+                    pred_test_aux, pred_test_main = model(depths)
+                else:
+                    pred_test_aux, pred_test_main = model(images)
             elif config.MODEL == 'DeepLabv3DepthMulti':
                 pred_test_aux, pred_test_main = model(images, depths)
             elif config.MODEL == 'DeeplabVGG' or config.MODEL == 'Oracle':
                 pred_test_main = model(images)
-
-            # todo: plot val loss
 
         images = helper_utils.cuda_2_numpy(images)
         depths = helper_utils.cuda_2_numpy(depths)
@@ -99,11 +101,12 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
         ### PLOTTING IMGS
         ##################
         if verbose:
-            imgs = helper_utils.torch_2_numpy(images, mean=config.IMG_MEAN, is_rgb=True)
-            depths = helper_utils.torch_2_numpy(depths, mean=config.IMG_MEAN, is_depth=True)
+            imgs = helper_utils.torch_2_numpy(images, mean=test_loader.dataset.dataset.mean, std=test_loader.dataset.dataset.std, is_rgb=True)
+            depths = helper_utils.torch_2_numpy(depths, mean=test_loader.dataset.dataset.mean, std=test_loader.dataset.dataset.std, is_depth=True)
             labels = helper_utils.torch_2_numpy(labels)
-            labels = helper_utils.colorize_mask(labels)
             pred = helper_utils.torch_2_numpy(pred_test_main)
+
+            labels = helper_utils.colorize_mask(labels)
             pred = helper_utils.colorize_mask(pred)
 
             cv2.imshow('rgb', cv2.cvtColor(imgs, cv2.COLOR_BGR2RGB))
@@ -124,5 +127,14 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
         ##################
         ### compute Fwb
         ##################
-        Fwb = weightedFb(verbose=verbose, visualize=False)
+        # Fwb = weightedFb(verbose=verbose, visualize=False)
+
+        matlab_scrips_dir = config.ROOT_DIR_PATH + 'utils/matlab/'
+        os.chdir(matlab_scrips_dir)
+        # print(matlab_scrips_dir)
+        import matlab.engine
+        eng = matlab.engine.start_matlab()
+        Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
+        os.chdir(config.ROOT_DIR_PATH)
+
         return Fwb

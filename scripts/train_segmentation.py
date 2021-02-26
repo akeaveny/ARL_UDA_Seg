@@ -25,7 +25,7 @@ from tqdm import tqdm
 ###############################
 ###############################
 
-def train_segmentation(model, target_loader, test_loader, writer):
+def train_segmentation(model, target_loader, val_loader, test_loader, writer):
     """TRAIN SEG NETWORK WITHOUT DOMAIN ADAPTATION"""
 
     ######################
@@ -54,6 +54,7 @@ def train_segmentation(model, target_loader, test_loader, writer):
     ######################
     ######################
     i_iter = config.StartIteration
+    val_i_iter_global = config.StartIteration
     with tqdm(total=config.NUM_STEPS-config.StartIteration, desc=f'Iterations {config.NUM_STEPS}', unit='images') as pbar:
         while i_iter < config.NUM_STEPS:
 
@@ -73,14 +74,14 @@ def train_segmentation(model, target_loader, test_loader, writer):
                 images = depths
 
             if i_iter == 0:
-                if config.MODEL == 'DeepLab' or config.MODEL == 'DeepLabv3':
+                if config.MODEL == 'DeepLabv3':
                     writer.add_graph(model, images)
-                elif config.MODEL == 'DeepLabDepth' or config.MODEL == 'DeepLabv3Depth':
+                elif config.MODEL == 'DeepLabv3Depth':
                     writer.add_graph(model, [images, depths])
 
-            if config.MODEL == 'DeepLab' or config.MODEL == 'DeepLabv3':
+            if config.MODEL == 'DeepLabv3':
                 pred_target_main = model(images)
-            elif config.MODEL == 'DeepLabDepth' or config.MODEL == 'DeepLabv3Depth':
+            elif config.MODEL == 'DeepLabv3Depth':
                 pred_target_main = model(images, depths)
             target_pred = pred_target_main[0, :, :]
 
@@ -95,12 +96,54 @@ def train_segmentation(model, target_loader, test_loader, writer):
 
             optimizer.step()
 
-            pbar.set_postfix(**{'SegLoss: ': loss_seg_value})
-
             i_iter += 1
             pbar.update(int(images.shape[0]/config.BATCH_SIZE))
+            pbar.set_postfix(**{'SegLoss: ': loss_seg_value})
 
-            ## EVAL
+            ## VAL
+            if i_iter != 0 and i_iter % config.NUM_TRAIN == 0:
+                val_iter = 0
+                print("completed {} epoch(s), running val ..".format(np.floor(i_iter / config.NUM_TRAIN)))
+                while val_iter < config.NUM_VAL:
+                    val_iter += 1
+                    val_i_iter_global += 1
+                    val_loss_seg_value = 0
+                    _, batch = val_loader.__next__()
+                    images, labels, depths = batch['image'], batch['label'], batch['depth']
+                    images = images.to(device=config.GPU, dtype=torch.float32)
+                    labels = labels.to(device=config.GPU, dtype=torch.long)
+                    depths = depths.to(device=config.GPU, dtype=torch.float32)
+                    val_img, val_depth, val_gt = images[0, :, :, :], depths[0, :, :, :], labels[0, :, :]
+                    # for depth based training
+                    if config.NUM_CHANNELS == 1:
+                        images = depths
+
+                    if config.MODEL == 'DeepLabv3':
+                        pred_val_main = model(images)
+                    elif config.MODEL == 'DeepLabv3Depth':
+                        pred_val_main = model(images, depths)
+                    val_pred = pred_val_main[0, :, :]
+
+                    val_loss_seg = criterion(pred_val_main, labels)
+                    val_loss_seg_value += val_loss_seg.data.cpu().numpy()
+                    writer.add_scalar('Val/SegLoss', val_loss_seg_value, val_i_iter_global)
+
+                    if val_iter == 1:
+                        ### TENSORBOARD: loading best images
+                        writer.add_images('val_img/rgb',
+                                          helper_utils.cuda_img_2_tensorboard(val_img),
+                                          i_iter)
+                        writer.add_images('val_img/depth',
+                                          helper_utils.cuda_img_2_tensorboard(val_depth, is_depth=True),
+                                          i_iter)
+                        writer.add_images('val/gt_mask',
+                                          helper_utils.cuda_label_2_tensorboard(val_gt),
+                                          i_iter)
+                        writer.add_images('val/pred_mask',
+                                          helper_utils.cuda_label_2_tensorboard(val_pred, is_pred=True),
+                                          i_iter)
+
+            ## EVAL MODEL ON TEST SET
             if i_iter != 0 and i_iter % config.EVAL_UPDATE == 0:
                 # mIoU = eval_model(model, test_loader, eval_mIoU=True)
                 # writer.add_scalar('eval/mIoU', mIoU, i_iter)
@@ -112,10 +155,10 @@ def train_segmentation(model, target_loader, test_loader, writer):
                     print("Saving best model .. best Fwb={:.5} ..".format(best_Fwb))
                     torch.save(model.state_dict(), config.BEST_MODEL_SAVE_PATH)
                     ### TENSORBOARD: loading best images
-                    writer.add_images('dataset/target_img',
+                    writer.add_images('target_img/rgb',
                                       helper_utils.cuda_img_2_tensorboard(target_img),
                                       i_iter)
-                    writer.add_images('dataset/target_depth',
+                    writer.add_images('target_img/depth',
                                       helper_utils.cuda_img_2_tensorboard(target_depth, is_depth=True),
                                       i_iter)
                     writer.add_images('target/gt_mask',

@@ -205,30 +205,30 @@ class ResNetDepth(nn.Module):
         x_resnet0 = self.bn1(x_resnet0)
         x_resnet0 = self.relu(x_resnet0)
         x_resnet0 = self.maxpool(x_resnet0)
-        # x_resnet0 = self.se_resnet_1(rgb=x_resnet0, depth=x_depth_resnet0)
+        x_resnet0 = self.se_resnet_1(rgb=x_resnet0, depth=x_depth_resnet0)
 
         # ResNet Block 1
         x_resnet1 = self.layer1(x_resnet0)
-        # x_resnet1 = self.se_resnet_2(rgb=x_resnet1, depth=x_depth_resnet1)
+        x_resnet1 = self.se_resnet_2(rgb=x_resnet1, depth=x_depth_resnet1)
         low_level_rgb_feat = x_resnet1
         # ResNet Block 2
         x_resnet2 = self.layer2(x_resnet1)
-        # x_resnet2 = self.se_resnet_3(rgb=x_resnet2, depth=x_depth_resnet2)
+        x_resnet2 = self.se_resnet_3(rgb=x_resnet2, depth=x_depth_resnet2)
         # ResNet Block 3
         x_resnet3 = self.layer3(x_resnet2)
-        # x_resnet3 = self.se_resnet_4(rgb=x_resnet3, depth=x_depth_resnet3)
+        x_resnet3 = self.se_resnet_4(rgb=x_resnet3, depth=x_depth_resnet3)
         # ResNet Block 4
         x_resnet4 = self.layer4(x_resnet3)
-        # x_resnet4 = self.se_resnet_5(rgb=x_resnet4, depth=x_depth_resnet4)
+        x_resnet4 = self.se_resnet_5(rgb=x_resnet4, depth=x_depth_resnet4)
 
         ###########################
         ### TODO: Concat
         ###########################
 
-        x_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
-        return x_cat, low_level_rgb_feat
+        # x_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
+        # return x_cat, low_level_rgb_feat
 
-        # return x_resnet4, low_level_rgb_feat
+        return x_resnet4, x_depth_resnet4, low_level_rgb_feat
 
     #########################
     #########################
@@ -335,7 +335,7 @@ class DeepLabv3Depth(nn.Module):
 
         # ResNet 101
         self.resnet_rgbd_features = ResNetDepth101(nRGBChannels, nDChannels, os, pretrained=pretrained)
-        resnet_rgbd_feats = int(2048*2)
+        resnet_rgbd_feats = int(2048*1)
         resnet_rgbd_low_level_feats = int(256*1)
 
         # ASPP
@@ -346,22 +346,36 @@ class DeepLabv3Depth(nn.Module):
         else:
             raise NotImplementedError
 
+        self.relu = nn.ReLU()
+
         #########################
         # Classifier 1
         #########################
-
+        ### RGB
         self.aspp1 = ASPP_module(resnet_rgbd_feats, 256, rate=rates[0])
         self.aspp2 = ASPP_module(resnet_rgbd_feats, 256, rate=rates[1])
         self.aspp3 = ASPP_module(resnet_rgbd_feats, 256, rate=rates[2])
         self.aspp4 = ASPP_module(resnet_rgbd_feats, 256, rate=rates[3])
 
-        self.relu = nn.ReLU()
-
         self.global_avg_pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
                                              nn.Conv2d(resnet_rgbd_feats, 256, 1, stride=1, bias=False),
                                              nn.BatchNorm2d(256),
                                              nn.ReLU())
+        ### DEPTH
+        self.aspp1_depth = ASPP_module(resnet_rgbd_feats, 256, rate=rates[0])
+        self.aspp2_depth = ASPP_module(resnet_rgbd_feats, 256, rate=rates[1])
+        self.aspp3_depth = ASPP_module(resnet_rgbd_feats, 256, rate=rates[2])
+        self.aspp4_depth = ASPP_module(resnet_rgbd_feats, 256, rate=rates[3])
 
+        self.global_avg_pool_depth = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                             nn.Conv2d(resnet_rgbd_feats, 256, 1, stride=1, bias=False),
+                                             nn.BatchNorm2d(256),
+                                             nn.ReLU())
+        ### SE
+        self.se_classifier_1 = SqueezeAndExciteFusionAdd(1280, activation=self.relu)
+
+        #########################
+        #########################
         self.conv1 = nn.Conv2d(1280, 256, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(256)
 
@@ -381,21 +395,39 @@ class DeepLabv3Depth(nn.Module):
     #########################
 
     def forward(self, rgb, depth):
-        x, low_level_features = self.resnet_rgbd_features(rgb, depth)
+        x_rgb, x_depth, low_level_features = self.resnet_rgbd_features(rgb, depth)
         #########################
         # Classifier 1
         #########################
-        ### ASPP
-        x1 = self.aspp1(x)
-        x2 = self.aspp2(x)
-        x3 = self.aspp3(x)
-        x4 = self.aspp4(x)
+        ### RGB
+        x1_rgb = self.aspp1(x_rgb)
+        x2_rgb = self.aspp2(x_rgb)
+        x3_rgb = self.aspp3(x_rgb)
+        x4_rgb = self.aspp4(x_rgb)
         self.global_avg_pool.eval()
-        x5 = self.global_avg_pool(x)
+        x5_rgb = self.global_avg_pool(x_rgb)
         self.global_avg_pool.train()
-        x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+        x5_rgb = F.upsample(x5_rgb, size=x4_rgb.size()[2:], mode='bilinear', align_corners=True)
 
-        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        x_rgb = torch.cat((x1_rgb, x2_rgb, x3_rgb, x4_rgb, x5_rgb), dim=1)
+
+        ### DEPTH
+        x1_depth = self.aspp1_depth(x_depth)
+        x2_depth = self.aspp2_depth(x_depth)
+        x3_depth = self.aspp3_depth(x_depth)
+        x4_depth = self.aspp4_depth(x_depth)
+        self.global_avg_pool_depth.eval()
+        x5_depth = self.global_avg_pool_depth(x_depth)
+        self.global_avg_pool_depth.train()
+        x5_depth = F.upsample(x5_depth, size=x4_depth.size()[2:], mode='bilinear', align_corners=True)
+
+        x_depth = torch.cat((x1_depth, x2_depth, x3_depth, x4_depth, x5_depth), dim=1)
+
+        ### SE
+        x = self.se_classifier_1(rgb=x_rgb, depth=x_depth)
+
+        #########################
+        #########################
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -457,7 +489,9 @@ class DeepLabv3Depth(nn.Module):
         This generator returns all the parameters for the last layer of the net,
         which does the classification of pixel into classes
         """
-        b = [self.aspp1, self.aspp2, self.aspp3, self.aspp4, self.conv1, self.conv2, self.last_conv]
+        b = [self.aspp1, self.aspp2, self.aspp3, self.aspp4, self.conv1, self.conv2, self.last_conv,
+             self.aspp1_depth,self.aspp2_depth,self.aspp3_depth,self.aspp4_depth,self.global_avg_pool_depth,
+             self.se_classifier_1]
         for j in range(len(b)):
             for k in b[j].parameters():
                 if k.requires_grad:

@@ -205,31 +205,33 @@ class ResNetDepth(nn.Module):
         x_resnet0 = self.bn1(x_resnet0)
         x_resnet0 = self.relu(x_resnet0)
         x_resnet0 = self.maxpool(x_resnet0)
-        # x_resnet0 = self.se_resnet_0(rgb=x_resnet0, depth=x_depth_resnet0)
+        x_resnet0 = self.se_resnet_0(rgb=x_resnet0, depth=x_depth_resnet0)
 
         # ResNet Block 1
         x_resnet1 = self.layer1(x_resnet0)
-        # x_resnet1 = self.se_resnet_1(rgb=x_resnet1, depth=x_depth_resnet1)
+        x_resnet1 = self.se_resnet_1(rgb=x_resnet1, depth=x_depth_resnet1)
         low_level_rgb_feat = x_resnet1
         # ResNet Block 2
         x_resnet2 = self.layer2(x_resnet1)
-        # x_resnet2 = self.se_resnet_2(rgb=x_resnet2, depth=x_depth_resnet2)
+        x_resnet2 = self.se_resnet_2(rgb=x_resnet2, depth=x_depth_resnet2)
         # ResNet Block 3
         x_resnet3 = self.layer3(x_resnet2)
-        # x_resnet3 = self.se_resnet_3(rgb=x_resnet3, depth=x_depth_resnet3)
+        x_resnet3 = self.se_resnet_3(rgb=x_resnet3, depth=x_depth_resnet3)
         # ResNet Block 4
         x_resnet4 = self.layer4(x_resnet3)
-        # x_resnet4 = self.se_resnet_4(rgb=x_resnet4, depth=x_depth_resnet4)
+        x_resnet4 = self.se_resnet_4(rgb=x_resnet4, depth=x_depth_resnet4)
 
         ###########################
         ### TODO: Addition or Concat (see paper ..)
         ###########################
 
-        x_resnet3 = torch.cat((x_resnet3, x_depth_resnet3), dim=1)
-        x_resnet4 = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
+        # x_resnet3 = torch.cat((x_resnet3, x_depth_resnet3), dim=1)
+        # x_resnet4 = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
 
         # x_resnet4, x_resnet3, low_level_feat
-        return x_resnet4, x_resnet3, low_level_rgb_feat
+        # x_depth_resnet4, x_depth_resnet3, low_level_depth_feat
+        return x_resnet4, x_resnet3, low_level_rgb_feat, \
+               x_depth_resnet4, x_depth_resnet3, low_level_depth_feat
 
     #########################
     #########################
@@ -336,10 +338,10 @@ class DeepLabv3DepthMulti(nn.Module):
 
         # ResNet 101
         self.resnet_rgbd_features = ResNetDepth101(nRGBChannels, nDChannels, os, pretrained=pretrained)
-        self.main_features = int(2048*2)
-        self.aux_features  = int(1024*2)
+        self.main_features = int(2048*1)
+        self.aux_features  = int(1024*1)
         self.se_last_conv_features = int(304*1)
-        self.last_conv_features = int(304*1)
+        self.last_conv_features = int(304*2)
 
         # ASPP
         if os == 16:
@@ -373,26 +375,25 @@ class DeepLabv3DepthMulti(nn.Module):
         self.bn2_main_rgb = nn.BatchNorm2d(48)
 
         ### DEPTH
-        # self.aspp1_main_depth = ASPP_module(self.main_features, 256, rate=rates[0])
-        # self.aspp2_main_depth = ASPP_module(self.main_features, 256, rate=rates[1])
-        # self.aspp3_main_depth = ASPP_module(self.main_features, 256, rate=rates[2])
-        # self.aspp4_main_depth = ASPP_module(self.main_features, 256, rate=rates[3])
-        #
-        # self.global_avg_pool_main_depth = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-        #                                           nn.Conv2d(self.main_features, 256, 1, stride=1, bias=False),
-        #                                           nn.BatchNorm2d(256),
-        #                                           nn.ReLU())
-        #
-        # self.conv1_main_depth = nn.Conv2d(1280, 256, 1, bias=False)
-        # self.bn1_main_depth = nn.BatchNorm2d(256)
-        #
-        # self.conv2_main_depth = nn.Conv2d(256, 48, 1, bias=False)
-        # self.bn2_main_depth = nn.BatchNorm2d(48)
+        self.aspp1_main_depth = ASPP_module(self.main_features, 256, rate=rates[0])
+        self.aspp2_main_depth = ASPP_module(self.main_features, 256, rate=rates[1])
+        self.aspp3_main_depth = ASPP_module(self.main_features, 256, rate=rates[2])
+        self.aspp4_main_depth = ASPP_module(self.main_features, 256, rate=rates[3])
 
-        # ###
-        # self.se_last_conv_main = SqueezeAndExciteFusionAdd(self.se_last_conv_features, activation=self.relu)
+        self.global_avg_pool_main_depth = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                                  nn.Conv2d(self.main_features, 256, 1, stride=1, bias=False),
+                                                  nn.BatchNorm2d(256),
+                                                  nn.ReLU())
+
+        self.conv1_main_depth = nn.Conv2d(1280, 256, 1, bias=False)
+        self.bn1_main_depth = nn.BatchNorm2d(256)
+
+        self.conv2_main_depth = nn.Conv2d(256, 48, 1, bias=False)
+        self.bn2_main_depth = nn.BatchNorm2d(48)
 
         ###
+        self.se_last_conv_main = SqueezeAndExciteFusionAdd(self.se_last_conv_features, activation=self.relu)
+
         self.last_conv_main = nn.Sequential(nn.Conv2d(self.last_conv_features, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                             nn.BatchNorm2d(256),
                                             nn.ReLU(),
@@ -423,26 +424,25 @@ class DeepLabv3DepthMulti(nn.Module):
         self.bn2_aux_rgb = nn.BatchNorm2d(48)
 
         ### DEPTH
-        # self.aspp1_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[0])
-        # self.aspp2_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[1])
-        # self.aspp3_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[2])
-        # self.aspp4_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[3])
-        #
-        # self.global_avg_pool_aux_depth = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-        #                                          nn.Conv2d(self.aux_features, 256, 1, stride=1, bias=False),
-        #                                          nn.BatchNorm2d(256),
-        #                                          nn.ReLU())
-        #
-        # self.conv1_aux_depth = nn.Conv2d(1280, 256, 1, bias=False)
-        # self.bn1_aux_depth = nn.BatchNorm2d(256)
-        #
-        # self.conv2_aux_depth = nn.Conv2d(256, 48, 1, bias=False)
-        # self.bn2_aux_depth = nn.BatchNorm2d(48)
+        self.aspp1_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[0])
+        self.aspp2_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[1])
+        self.aspp3_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[2])
+        self.aspp4_aux_depth = ASPP_module(self.aux_features, 256, rate=rates[3])
+
+        self.global_avg_pool_aux_depth = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                                 nn.Conv2d(self.aux_features, 256, 1, stride=1, bias=False),
+                                                 nn.BatchNorm2d(256),
+                                                 nn.ReLU())
+
+        self.conv1_aux_depth = nn.Conv2d(1280, 256, 1, bias=False)
+        self.bn1_aux_depth = nn.BatchNorm2d(256)
+
+        self.conv2_aux_depth = nn.Conv2d(256, 48, 1, bias=False)
+        self.bn2_aux_depth = nn.BatchNorm2d(48)
 
         ###
-        # self.se_last_conv_aux = SqueezeAndExciteFusionAdd(self.se_last_conv_features, activation=self.relu)
+        self.se_last_conv_aux = SqueezeAndExciteFusionAdd(self.se_last_conv_features, activation=self.relu)
 
-        ###
         self.last_conv_aux = nn.Sequential(nn.Conv2d(self.last_conv_features, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                            nn.BatchNorm2d(256),
                                            nn.ReLU(),
@@ -456,7 +456,10 @@ class DeepLabv3DepthMulti(nn.Module):
 
     def forward(self, rgb, depth):
         # x_resnet4, x_resnet3, low_level_feat
-        x_resnet4, x_resnet3, resnet_low_level_features = self.resnet_rgbd_features(rgb, depth)
+        # x_depth_resnet4, x_depth_resnet3, low_level_depth_feat
+        x_resnet4, x_resnet3, resnet_low_level_features, \
+        x_depth_resnet4, x_depth_resnet3, resnet_low_level_depth_features \
+            = self.resnet_rgbd_features(rgb, depth)
 
         #########################
         # Classifier 1: main
@@ -482,12 +485,43 @@ class DeepLabv3DepthMulti(nn.Module):
         x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
                                 int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
 
-        ###
         low_level_features = self.conv2_main_rgb(resnet_low_level_features)
         low_level_features = self.bn2_main_rgb(low_level_features)
         low_level_features = self.relu(low_level_features)
 
-        x = torch.cat((x, low_level_features), dim=1)
+        x_main_rgb = torch.cat((x, low_level_features), dim=1)
+
+        ### Depth
+        x1 = self.aspp1_main_depth(x_depth_resnet4)
+        x2 = self.aspp2_main_depth(x_depth_resnet4)
+        x3 = self.aspp3_main_depth(x_depth_resnet4)
+        x4 = self.aspp4_main_depth(x_depth_resnet4)
+
+        self.global_avg_pool_main_depth.eval()
+        x5 = self.global_avg_pool_main_depth(x_depth_resnet4)
+        self.global_avg_pool_main_depth.train()
+
+        x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+
+        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
+
+        x = self.conv1_main_depth(x)
+        x = self.bn1_main_depth(x)
+        x = self.relu(x)
+        x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
+                                int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
+
+        low_level_features = self.conv2_main_depth(resnet_low_level_depth_features)
+        low_level_features = self.bn2_main_depth(low_level_features)
+        low_level_features = self.relu(low_level_features)
+
+        x_main_depth = torch.cat((x, low_level_features), dim=1)
+
+        ### Concat
+        x_main_rgb = self.se_last_conv_main(rgb=x_main_rgb, depth=x_main_depth)
+        x = torch.cat((x_main_rgb, x_main_depth), dim=1)
+
+        # x = self.se_last_conv_main(rgb=x_main_rgb, depth=x_main_depth)
 
         ###
         x = self.last_conv_main(x)
@@ -517,12 +551,43 @@ class DeepLabv3DepthMulti(nn.Module):
         x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
                                 int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
 
-        ###
         low_level_features = self.conv2_aux_rgb(resnet_low_level_features)
         low_level_features = self.bn2_aux_rgb(low_level_features)
         low_level_features = self.relu(low_level_features)
 
-        x = torch.cat((x, low_level_features), dim=1)
+        x_aux_rgb = torch.cat((x, low_level_features), dim=1)
+
+        ### DEPTH
+        x1 = self.aspp1_aux_depth(x_depth_resnet3)
+        x2 = self.aspp2_aux_depth(x_depth_resnet3)
+        x3 = self.aspp3_aux_depth(x_depth_resnet3)
+        x4 = self.aspp4_aux_depth(x_depth_resnet3)
+
+        self.global_avg_pool_aux_depth.eval()
+        x5 = self.global_avg_pool_aux_depth(x_depth_resnet3)
+        self.global_avg_pool_aux_depth.train()
+
+        x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+
+        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
+
+        x = self.conv1_aux_depth(x)
+        x = self.bn1_aux_depth(x)
+        x = self.relu(x)
+        x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
+                                int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
+
+        low_level_features = self.conv2_aux_depth(resnet_low_level_depth_features)
+        low_level_features = self.bn2_aux_depth(low_level_features)
+        low_level_features = self.relu(low_level_features)
+
+        x_aux_depth = torch.cat((x, low_level_features), dim=1)
+
+        ### Concat
+        x_aux_rgb = self.se_last_conv_aux(rgb=x_aux_rgb, depth=x_aux_depth)
+        x = torch.cat((x_aux_rgb, x_aux_depth), dim=1)
+
+        # x = self.se_last_conv_aux(rgb=x_aux_rgb, depth=x_aux_depth)
 
         ###
         x = self.last_conv_aux(x)
@@ -576,20 +641,22 @@ class DeepLabv3DepthMulti(nn.Module):
         b = [
             # Main: RGB
             self.aspp1_main_rgb, self.aspp2_main_rgb, self.aspp3_main_rgb, self.aspp4_main_rgb,
-            self.conv1_main_rgb, self.conv2_main_rgb, self.last_conv_main,
+            self.conv1_main_rgb, self.conv2_main_rgb,
             # Main: DEPTH
-            # self.aspp1_main_depth, self.aspp2_main_depth, self.aspp3_main_depth, self.aspp4_main_depth,
-            # self.conv1_main_depth, self.conv2_main_depth,
+            self.aspp1_main_depth, self.aspp2_main_depth, self.aspp3_main_depth, self.aspp4_main_depth,
+            self.conv1_main_depth, self.conv2_main_depth,
             #
-            # self.se_last_conv_main,
+            self.se_last_conv_main,
+            self.last_conv_main,
             # AUX: RGB
             self.aspp1_aux_rgb, self.aspp2_aux_rgb, self.aspp3_aux_rgb, self.aspp4_aux_rgb,
-            self.conv1_aux_rgb, self.conv2_aux_rgb, self.last_conv_aux,
+            self.conv1_aux_rgb, self.conv2_aux_rgb,
             # AUX: DEPTH
-            # self.aspp1_aux_depth, self.aspp2_aux_depth, self.aspp3_aux_depth, self.aspp4_aux_depth,
-            # self.conv1_aux_depth, self.conv2_aux_depth,
+            self.aspp1_aux_depth, self.aspp2_aux_depth, self.aspp3_aux_depth, self.aspp4_aux_depth,
+            self.conv1_aux_depth, self.conv2_aux_depth,
             #
-            # self.se_last_conv_aux,
+            self.se_last_conv_aux,
+            self.last_conv_aux,
         ]
         for j in range(len(b)):
             for k in b[j].parameters():
@@ -604,12 +671,13 @@ class DeepLabv3DepthMulti(nn.Module):
         b = [
             # Main: RGB
             self.aspp1_main_rgb, self.aspp2_main_rgb, self.aspp3_main_rgb, self.aspp4_main_rgb,
-            self.conv1_main_rgb, self.conv2_main_rgb, self.last_conv_main,
+            self.conv1_main_rgb, self.conv2_main_rgb,
             # Main: DEPTH
-            # self.aspp1_main_depth, self.aspp2_main_depth, self.aspp3_main_depth, self.aspp4_main_depth,
-            # self.conv1_main_depth, self.conv2_main_depth,
+            self.aspp1_main_depth, self.aspp2_main_depth, self.aspp3_main_depth, self.aspp4_main_depth,
+            self.conv1_main_depth, self.conv2_main_depth,
             #
-            # self.se_last_conv_main,
+            self.se_last_conv_main,
+            self.last_conv_main,
         ]
         for j in range(len(b)):
             for k in b[j].parameters():
@@ -624,12 +692,13 @@ class DeepLabv3DepthMulti(nn.Module):
         b = [
             # AUX: RGB
             self.aspp1_aux_rgb, self.aspp2_aux_rgb, self.aspp3_aux_rgb, self.aspp4_aux_rgb,
-            self.conv1_aux_rgb, self.conv2_aux_rgb, self.last_conv_aux,
+            self.conv1_aux_rgb, self.conv2_aux_rgb,
             # AUX: DEPTH
-            # self.aspp1_aux_depth, self.aspp2_aux_depth, self.aspp3_aux_depth, self.aspp4_aux_depth,
-            # self.conv1_aux_depth, self.conv2_aux_depth,
+            self.aspp1_aux_depth, self.aspp2_aux_depth, self.aspp3_aux_depth, self.aspp4_aux_depth,
+            self.conv1_aux_depth, self.conv2_aux_depth,
             #
-            # self.se_last_conv_aux,
+            self.se_last_conv_aux,
+            self.last_conv_aux,
         ]
         for j in range(len(b)):
             for k in b[j].parameters():

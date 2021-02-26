@@ -161,7 +161,8 @@ class ResNet(nn.Module):
         # ResNet Block 4
         x_resnet4 = self.layer4(x_resnet3)
 
-        return x_resnet4, low_level_feat
+        # x_resnet4, x_resnet3, low_level_feat
+        return x_resnet4, x_resnet3, low_level_feat
 
     #########################
     #########################
@@ -262,6 +263,8 @@ class DeepLabv3Multi(nn.Module):
 
         # ResNet 101
         self.resnet_features = ResNet101(nInputChannels, os, pretrained=pretrained)
+        self.main_features = int(2048)
+        self.aux_features  = int(2048/2)
 
         # ASPP
         if os == 16:
@@ -274,27 +277,27 @@ class DeepLabv3Multi(nn.Module):
         self.relu = nn.ReLU()
 
         #########################
-        # Classifier 1
+        # Classifier 1: main
         #########################
 
-        self.aspp1_c1 = ASPP_module(2048, 256, rate=rates[0])
-        self.aspp2_c1 = ASPP_module(2048, 256, rate=rates[1])
-        self.aspp3_c1 = ASPP_module(2048, 256, rate=rates[2])
-        self.aspp4_c1 = ASPP_module(2048, 256, rate=rates[3])
+        self.aspp1_main = ASPP_module(self.main_features, 256, rate=rates[0])
+        self.aspp2_main = ASPP_module(self.main_features, 256, rate=rates[1])
+        self.aspp3_main = ASPP_module(self.main_features, 256, rate=rates[2])
+        self.aspp4_main = ASPP_module(self.main_features, 256, rate=rates[3])
 
-        self.global_avg_pool_c1 = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-                                                nn.Conv2d(2048, 256, 1, stride=1, bias=False),
+        self.global_avg_pool_main = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                                nn.Conv2d(self.main_features, 256, 1, stride=1, bias=False),
                                                 nn.BatchNorm2d(256),
                                                 nn.ReLU())
 
-        self.conv1_c1 = nn.Conv2d(1280, 256, 1, bias=False)
-        self.bn1_c1 = nn.BatchNorm2d(256)
+        self.conv1_main = nn.Conv2d(1280, 256, 1, bias=False)
+        self.bn1_main = nn.BatchNorm2d(256)
 
         # adopt [1x1, 48] for channel reduction.
-        self.conv2_c1 = nn.Conv2d(256, 48, 1, bias=False)
-        self.bn2_c1 = nn.BatchNorm2d(48)
+        self.conv2_main = nn.Conv2d(256, 48, 1, bias=False)
+        self.bn2_main = nn.BatchNorm2d(48)
 
-        self.last_conv_c1 = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        self.last_conv_main = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                           nn.BatchNorm2d(256),
                                           nn.ReLU(),
                                           nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -303,27 +306,27 @@ class DeepLabv3Multi(nn.Module):
                                           nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
 
         #########################
-        # Classifier 2
+        # Classifier 2: aux
         #########################
 
-        self.aspp1_c2 = ASPP_module(2048, 256, rate=rates[0])
-        self.aspp2_c2 = ASPP_module(2048, 256, rate=rates[1])
-        self.aspp3_c2 = ASPP_module(2048, 256, rate=rates[2])
-        self.aspp4_c2 = ASPP_module(2048, 256, rate=rates[3])
+        self.aspp1_aux = ASPP_module(self.aux_features, 256, rate=rates[0])
+        self.aspp2_aux = ASPP_module(self.aux_features, 256, rate=rates[1])
+        self.aspp3_aux = ASPP_module(self.aux_features, 256, rate=rates[2])
+        self.aspp4_aux = ASPP_module(self.aux_features, 256, rate=rates[3])
 
-        self.global_avg_pool_c2 = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-                                                nn.Conv2d(2048, 256, 1, stride=1, bias=False),
+        self.global_avg_pool_aux = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                                nn.Conv2d(self.aux_features, 256, 1, stride=1, bias=False),
                                                 nn.BatchNorm2d(256),
                                                 nn.ReLU())
 
-        self.conv1_c2 = nn.Conv2d(1280, 256, 1, bias=False)
-        self.bn1_c2 = nn.BatchNorm2d(256)
+        self.conv1_aux = nn.Conv2d(1280, 256, 1, bias=False)
+        self.bn1_aux = nn.BatchNorm2d(256)
 
         # adopt [1x1, 48] for channel reduction.
-        self.conv2_c2 = nn.Conv2d(256, 48, 1, bias=False)
-        self.bn2_c2 = nn.BatchNorm2d(48)
+        self.conv2_aux = nn.Conv2d(256, 48, 1, bias=False)
+        self.bn2_aux = nn.BatchNorm2d(48)
 
-        self.last_conv_c2 = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        self.last_conv_aux = nn.Sequential(nn.Conv2d(304, 256, kernel_size=3, stride=1, padding=1, bias=False),
                                           nn.BatchNorm2d(256),
                                           nn.ReLU(),
                                           nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -335,76 +338,80 @@ class DeepLabv3Multi(nn.Module):
     #########################
 
     def forward(self, rgb):
-        x, low_level_features = self.resnet_features(rgb)
+        # x_resnet4, x_resnet3, low_level_feat
+        x_resnet4, x_resnet3, resnet_low_level_features = self.resnet_features(rgb)
 
         #########################
-        # Classifier 1
+        # Classifier 1: main
         #########################
         ### ASPP
-        x1 = self.aspp1_c1(x)
-        x2 = self.aspp2_c1(x)
-        x3 = self.aspp3_c1(x)
-        x4 = self.aspp4_c1(x)
-        self.global_avg_pool_c1.eval()
-        x5 = self.global_avg_pool_c1(x)
-        self.global_avg_pool_c1.train()
+        x1 = self.aspp1_main(x_resnet4)
+        x2 = self.aspp2_main(x_resnet4)
+        x3 = self.aspp3_main(x_resnet4)
+        x4 = self.aspp4_main(x_resnet4)
+
+        self.global_avg_pool_main.eval()
+        x5 = self.global_avg_pool_main(x_resnet4)
+        self.global_avg_pool_main.train()
 
         x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
 
-        x_c1 = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
 
-        x_c1 = self.conv1_c1(x_c1)
-        x_c1 = self.bn1_c1(x_c1)
-        x_c1 = self.relu(x_c1)
-        x_c1 = F.upsample(x_c1, size=(int(math.ceil(rgb.size()[-2] // 4)),
+        x = self.conv1_main(x)
+        x = self.bn1_main(x)
+        x = self.relu(x)
+        x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
                                       int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
 
         ### Low Level
-        low_level_features_c1 = self.conv2_c1(low_level_features)
-        low_level_features_c1 = self.bn2_c1(low_level_features_c1)
-        low_level_features_c1 = self.relu(low_level_features_c1)
+        low_level_features = self.conv2_main(resnet_low_level_features)
+        low_level_features = self.bn2_main(low_level_features)
+        low_level_features = self.relu(low_level_features)
 
         ### Concat
-        x_c1 = torch.cat((x_c1, low_level_features_c1), dim=1)
-        x_c1 = self.last_conv_c1(x_c1)
-        x_c1 = F.upsample(x_c1, size=rgb.size()[2:], mode='bilinear', align_corners=True)
+        x = torch.cat((x, low_level_features), dim=1)
+        x = self.last_conv_main(x)
+        x_main = F.upsample(x, size=rgb.size()[2:], mode='bilinear', align_corners=True)
 
         #########################
-        # Classifier 1
+        # Classifier 2: aux
         #########################
         ### ASPP
-        x1 = self.aspp1_c2(x)
-        x2 = self.aspp2_c2(x)
-        x3 = self.aspp3_c2(x)
-        x4 = self.aspp4_c2(x)
-        self.global_avg_pool_c2.eval()
-        x5 = self.global_avg_pool_c2(x)
-        self.global_avg_pool_c2.train()
+        x1 = self.aspp1_aux(x_resnet3)
+        x2 = self.aspp2_aux(x_resnet3)
+        x3 = self.aspp3_aux(x_resnet3)
+        x4 = self.aspp4_aux(x_resnet3)
+
+        self.global_avg_pool_aux.eval()
+        x5 = self.global_avg_pool_aux(x_resnet3)
+        self.global_avg_pool_aux.train()
 
         x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
 
-        x_c2 = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
 
-        x_c2 = self.conv1_c2(x_c2)
-        x_c2 = self.bn1_c2(x_c2)
-        x_c2 = self.relu(x_c2)
-        x_c2 = F.upsample(x_c2, size=(int(math.ceil(rgb.size()[-2] // 4)),
+        x = self.conv1_aux(x)
+        x = self.bn1_aux(x)
+        x = self.relu(x)
+        x = F.upsample(x, size=(int(math.ceil(rgb.size()[-2] // 4)),
                                       int(math.ceil(rgb.size()[-1] // 4))), mode='bilinear', align_corners=True)
 
         ### Low Level
-        low_level_features_c2 = self.conv2_c1(low_level_features)
-        low_level_features_c2 = self.bn2_c1(low_level_features_c2)
-        low_level_features_c2 = self.relu(low_level_features_c2)
+        low_level_features = self.conv2_aux(resnet_low_level_features)
+        low_level_features = self.bn2_aux(low_level_features)
+        low_level_features = self.relu(low_level_features)
 
         ### Concat
-        x_c2 = torch.cat((x_c2, low_level_features_c2), dim=1)
-        x_c2 = self.last_conv_c2(x_c2)
-        x_c2 = F.upsample(x_c2, size=rgb.size()[2:], mode='bilinear', align_corners=True)
+        x = torch.cat((x, low_level_features), dim=1)
+        x = self.last_conv_aux(x)
+        x_aux = F.upsample(x, size=rgb.size()[2:], mode='bilinear', align_corners=True)
 
         #########################
         #########################
 
-        return x_c1, x_c2
+        # pred_target_aux, pred_target_main
+        return x_aux, x_main
 
     #########################
     #########################
@@ -447,10 +454,10 @@ class DeepLabv3Multi(nn.Module):
         which does the classification of pixel into classes
         """
         b = [
-            self.aspp1_c1, self.aspp2_c1, self.aspp3_c1, self.aspp4_c1,
-            self.conv1_c1, self.conv2_c1, self.last_conv_c1,
-            self.aspp1_c2, self.aspp2_c2, self.aspp3_c2, self.aspp4_c2,
-            self.conv1_c2, self.conv2_c2, self.last_conv_c2
+            self.aspp1_main, self.aspp2_main, self.aspp3_main, self.aspp4_main,
+            self.conv1_main, self.conv2_main, self.last_conv_main,
+            self.aspp1_aux, self.aspp2_aux, self.aspp3_aux, self.aspp4_aux,
+            self.conv1_aux, self.conv2_aux, self.last_conv_aux
            ]
         for j in range(len(b)):
             for k in b[j].parameters():
@@ -463,8 +470,8 @@ class DeepLabv3Multi(nn.Module):
         which does the classification of pixel into classes
         """
         b = [
-            self.aspp1_c1, self.aspp2_c1, self.aspp3_c1, self.aspp4_c1,
-            self.conv1_c1, self.conv2_c1, self.last_conv_c1,
+            self.aspp1_main, self.aspp2_main, self.aspp3_main, self.aspp4_main,
+            self.conv1_main, self.conv2_main, self.last_conv_main,
            ]
         for j in range(len(b)):
             for k in b[j].parameters():
@@ -477,8 +484,8 @@ class DeepLabv3Multi(nn.Module):
         which does the classification of pixel into classes
         """
         b = [
-            self.aspp1_c2, self.aspp2_c2, self.aspp3_c2, self.aspp4_c2,
-            self.conv1_c2, self.conv2_c2, self.last_conv_c2
+            self.aspp1_aux, self.aspp2_aux, self.aspp3_aux, self.aspp4_aux,
+            self.conv1_aux, self.conv2_aux, self.last_conv_aux
            ]
         for j in range(len(b)):
             for k in b[j].parameters():

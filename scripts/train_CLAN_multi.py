@@ -108,26 +108,28 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             images = images.to(device=config.GPU, dtype=torch.float32)
             labels = labels.to(device=config.GPU, dtype=torch.long)
             depths = depths.to(device=config.GPU, dtype=torch.float32)
-            source_img, source_depth, source_gt = images[0, :, :, :], depths[0, :, :, :], labels[0, :, :]
+            source_img, source_depth, source_gt = images[0, :, :, :].detach().clone(), \
+                                                  depths[0, :, :, :].detach().clone(), \
+                                                  labels[0, :, :].detach().clone()
             # for depth based training
             if config.NUM_CHANNELS == 1:
                 images = depths
 
             if i_iter == 0:
-                if config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
+                if config.MODEL == 'DeepLabv3Multi':
                     writer.add_graph(model, images)
                 elif config.MODEL == 'DeepLabv3DepthMulti':
                     writer.add_graph(model, [images, depths])
 
-            if config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
+            if config.MODEL == 'DeepLabv3Multi':
                 pred_source_aux, pred_source_main = model(images)
             elif config.MODEL == 'DeepLabv3DepthMulti':
                 pred_source_aux, pred_source_main = model(images, depths)
-            source_pred = pred_source_main[0, :, :]
+            source_pred = pred_source_main[0, :, :].detach().clone()
 
-            loss_seg1 = criterion(pred_source_aux, labels)
-            loss_seg2 = criterion(pred_source_main, labels)
-            loss_seg = loss_seg2 + config.LAMBDA_SEG * loss_seg1
+            loss_seg1 = criterion(pred_source_main, labels)
+            loss_seg2 = criterion(pred_source_aux, labels)
+            loss_seg = loss_seg1 + config.LAMBDA_CLAN_SEG * loss_seg2
 
             # proper normalization
             loss = loss_seg
@@ -137,8 +139,8 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
 
             ### TENSORBOARD
             writer.add_scalar('SegLoss/SegLoss', loss_seg_value1 + loss_seg_value2, i_iter)
-            writer.add_scalar('SegLoss/loss_seg_value1', loss_seg_value1, i_iter)
-            writer.add_scalar('SegLoss/loss_seg_value2', loss_seg_value2, i_iter)
+            writer.add_scalar('SegLoss/SegLoss_main', loss_seg_value1, i_iter)
+            writer.add_scalar('SegLoss/SegLoss_aux', loss_seg_value2, i_iter)
 
             #############################
             #############################
@@ -149,16 +151,18 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             images = images.to(device=config.GPU, dtype=torch.float32)
             labels = labels.to(device=config.GPU, dtype=torch.long)
             depths = depths.to(device=config.GPU, dtype=torch.float32)
-            target_img, target_depth, target_gt = images[0, :, :, :], depths[0, :, :, :], labels[0, :, :]
+            target_img, target_depth, target_gt = images[0, :, :, :].detach().clone(), \
+                                                  depths[0, :, :, :].detach().clone(), \
+                                                  labels[0, :, :].detach().clone()
             # for depth based training
             if config.NUM_CHANNELS == 1:
                 images = depths
 
-            if config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
+            if config.MODEL == 'DeepLabv3Multi':
                 pred_target_aux, pred_target_main = model(images)
             elif config.MODEL == 'DeepLabv3DepthMulti':
                 pred_target_aux, pred_target_main = model(images, depths)
-            target_pred = pred_target_main[0, :, :]
+            target_pred = pred_target_main[0, :, :].detach().clone()
 
             weight_map = helper_utils.weightmap(F.softmax(pred_target_aux, dim=1), F.softmax(pred_target_main, dim=1))
 
@@ -185,7 +189,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             loss_adv_target_value += loss_adv.data.cpu().numpy()
 
             ### TENSORBOARD
-            writer.add_scalar('ADVLoss/ADVLoss', loss_adv_target_value, i_iter)
+            writer.add_scalar('AdvLoss/AdvLoss', loss_adv_target_value, i_iter)
 
             #############################
             # Weight Discrepancy Loss
@@ -209,7 +213,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             loss_weight_dis_value += loss_weight.data.cpu().numpy()
 
             ### TENSORBOARD
-            writer.add_scalar('ADVLoss/WeightDis', loss_weight_dis_value, i_iter)
+            writer.add_scalar('WeightDis/WeightDis', loss_weight_dis_value, i_iter)
 
             #############################
             # train G
@@ -220,8 +224,8 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
                 param.requires_grad = True
 
             # train with source
-            pred_source_aux = pred_source_aux.detach()
             pred_source_main = pred_source_main.detach()
+            pred_source_aux = pred_source_aux.detach()
 
             D_source_out = upsample_source(model_D(F.softmax(pred_source_aux + pred_source_main, dim=1)))
             loss_source_D = bce_loss(D_source_out, helper_utils.fill_DA_label(D_source_out.data.size(), source_label))
@@ -230,8 +234,8 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
             loss_source_D_value += loss_source_D.data.cpu().numpy()
 
             # train with target
-            pred_target_aux = pred_target_aux.detach()
             pred_target_main = pred_target_main.detach()
+            pred_target_aux = pred_target_aux.detach()
             weight_map = weight_map.detach()
 
             D_target_out = upsample_target(model_D(F.softmax(pred_target_aux + pred_target_main, dim=1)))
@@ -251,15 +255,15 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
 
             ## TENSORBOARD
             writer.add_scalar('DisLoss/DisLoss', loss_source_D_value + loss_target_D_value, i_iter)
-            writer.add_scalar('DisLoss/loss_source_D_value', loss_source_D_value, i_iter)
-            writer.add_scalar('DisLoss/loss_target_D_value', loss_target_D_value, i_iter)
+            writer.add_scalar('DisLoss/loss_source', loss_source_D_value, i_iter)
+            writer.add_scalar('DisLoss/loss_target', loss_target_D_value, i_iter)
 
             optimizer.step()
             optimizer_D.step()
 
             pbar.set_postfix(**{
                 'SegLoss: '  : loss_seg_value1 + loss_seg_value2,
-                'ADVLoss: '  : loss_adv_target_value,
+                'AdvLoss: '  : loss_adv_target_value,
                 'WeightDis: ': loss_weight_dis_value,
                 'DisLoss: '  : loss_source_D_value + loss_target_D_value})
 
@@ -306,6 +310,7 @@ def train_CLAN_multi(model, model_D, target_loader, source_loader,test_loader,wr
 
             ## TENSORBOARD
             writer.add_scalar('learning_rate/seg', optimizer.param_groups[0]['lr'], i_iter)
+            writer.add_scalar('learning_rate/dis_main', optimizer_D.param_groups[0]['lr'], i_iter)
             ## TENSORBOARD
             if i_iter != 0 and i_iter % config.TENSORBOARD_UPDATE == 0:
                 # DEEPLAB WEIGHTS AND GRADS
