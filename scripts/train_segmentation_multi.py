@@ -129,7 +129,7 @@ def train_segmentation_multi(model, target_loader, val_loader, test_loader, writ
                                                  depths[0, :, :, :].detach().clone(), \
                                                  labels[0, :, :].detach().clone()
                     # for depth based training
-                    if config.NUM_CHANNELS == 1:
+                    if config.IS_TRAIN_WITH_DEPTH:
                         images = depths
 
                     if config.MODEL == 'DeepLabv3Multi':

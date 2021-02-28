@@ -17,8 +17,8 @@ FRAMEWORK Selection:
 
 # TODO: prelim for naming
 FRAMEWORK           = 'SegmentationMulti'
-EXP_DATASET_NAME    = 'UMD_Real_RGBD_LF'
-EXP_NUM             = 'v3'
+EXP_DATASET_NAME    = 'UMD_Real_D'
+EXP_NUM             = 'v3_Test'
 
 #######################################
 #######################################
@@ -31,10 +31,11 @@ MODEL Selection:
 'DeepLabv3DepthMulti'
 '''
 
-MODEL = 'DeepLabv3DepthMulti'
+MODEL = 'DeepLabv3Multi'
 LAMBDA_SEG = 0.1               # 0.1 for AdaptSegNet with lower level features
 
-NUM_CHANNELS        = 4        # RGB=3, DEPTH=1 or RGB=4
+IS_TRAIN_WITH_DEPTH = True
+NUM_CHANNELS        = 1        # RGB=3, DEPTH=1 or RGB=4
 NUM_RGB_CHANNELS    = NUM_CHANNELS - 1
 NUM_D_CHANNELS      = NUM_CHANNELS - 3
 
@@ -63,7 +64,7 @@ RESTORE_TRAINED_MODEL_ORC = 'http://vllab1.ucmerced.edu/~whung/adaptSeg/cityscap
 RESTORE_TRAINED_MODEL = '/home/akeaveny/catkin_ws/src/ARL_UDA_Seg/snapshots/CLAN_GTA5_82000.pth'
 
 ### Ours
-RESTORE_TRAINED_MODEL = '/home/akeaveny/git/AdaptSegNet/snapshots/UMD_Real_D/SegmentationMulti_UMD_Real_D_128x128_v2_FS/BEST_SEG_MODEL.pth'
+RESTORE_TRAINED_MODEL = '/home/akeaveny/git/AdaptSegNet/snapshots/UMD_Real_RGBD_LF/SegmentationMulti_UMD_Real_RGBD_LF_128x128_v3_Low_Level_Feats/BEST_SEG_MODEL.pth'
 
 #######################################
 #######################################

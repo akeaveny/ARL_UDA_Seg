@@ -13,6 +13,7 @@ import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 
+from skimage import io
 import skimage.transform
 from skimage.util import crop
 
@@ -226,6 +227,12 @@ class BasicDataSet(data.Dataset):
 
         ##################
         ##################
+        # depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
+        # depth = skimage.io.imread(depth_file[0])
+        # helper_utils.print_depth_info(depth)
+
+        ##################
+        ##################
 
         if self.use_dr_and_pr_images:
             if int(idx) <= config.PR_NUM_IMAGES:
@@ -274,6 +281,10 @@ class BasicDataSet(data.Dataset):
         image = np.array(image, dtype=np.uint8)
         label = np.array(label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
+
+        # helper_utils.print_depth_info(depth)
+        # depth = skimage.color.gray2rgb(depth)
+        # print(depth.shape)
 
         image = helper_utils.numpy_2_torch(image, mean=self.mean, std=self.std, is_rgb=True)
         depth = helper_utils.numpy_2_torch(depth, mean=self.mean,  std=self.std, is_depth=True)

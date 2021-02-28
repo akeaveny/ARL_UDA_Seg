@@ -591,6 +591,7 @@ if __name__ == "__main__":
                            _print=True)
     model.to(device=config.GPU)
     model.eval()
+    model.get_1x_lr_params()
 
     ### print(model.optim_parameters(config.LEARNING_RATE))
 

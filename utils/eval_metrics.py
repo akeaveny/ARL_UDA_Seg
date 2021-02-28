@@ -58,30 +58,28 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
         images = images.to(device=config.GPU, dtype=torch.float32)
         labels = labels.to(device=config.GPU, dtype=torch.long)
         depths = depths.to(device=config.GPU, dtype=torch.float32)
+        test_img, test_depth, test_gt = images[0, :, :, :].detach().clone(), \
+                                         depths[0, :, :, :].detach().clone(), \
+                                         labels[0, :, :].detach().clone()
+        # for depth based training
+        if config.IS_TRAIN_WITH_DEPTH:
+            images = depths
 
         with torch.no_grad():
             if config.MODEL == 'DeepLabv3':
-                # for depth based training
-                if config.NUM_CHANNELS == 1:
-                    pred_test_main = model(depths)
-                else:
-                    pred_test_main = model(images)
+                pred_test_main = model(images)
             elif config.MODEL == 'DeepLabv3Depth':
                 pred_test_main = model(images, depths)
             elif config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
-                # for depth based training
-                if config.NUM_CHANNELS == 1:
-                    pred_test_aux, pred_test_main = model(depths)
-                else:
-                    pred_test_aux, pred_test_main = model(images)
+                pred_test_aux, pred_test_main = model(images)
             elif config.MODEL == 'DeepLabv3DepthMulti':
                 pred_test_aux, pred_test_main = model(images, depths)
             elif config.MODEL == 'DeeplabVGG' or config.MODEL == 'Oracle':
                 pred_test_main = model(images)
 
-        images = helper_utils.cuda_2_numpy(images)
-        depths = helper_utils.cuda_2_numpy(depths)
-        labels = helper_utils.cuda_2_numpy(labels)
+        images = helper_utils.cuda_2_numpy(test_img)
+        depths = helper_utils.cuda_2_numpy(test_depth)
+        labels = helper_utils.cuda_2_numpy(test_gt)
         pred_test_main = helper_utils.cuda_2_numpy(pred_test_main, is_pred=True)
 
         if verbose and image_idx == 0:
