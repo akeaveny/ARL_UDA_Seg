@@ -14,6 +14,7 @@ import cfg as config
 from model.deeplab import Deeplab
 from model.deeplab_depth import DeeplabDepth
 from model.deeplab_multi import DeeplabMulti
+from model.deeplab_depth_multi import DeeplabDepthMulti
 from model.deeplabv3 import DeepLabv3
 from model.deeplabv3_depth import DeepLabv3Depth
 from model.deeplabv3_multi import DeepLabv3Multi
@@ -84,6 +85,8 @@ def main():
         model = DeeplabDepth(pretrained=False)
     elif config.MODEL == 'DeepLabMulti':
         model = DeeplabMulti(pretrained=False)
+    elif config.MODEL == 'DeepLabDepthMulti':
+        model = DeeplabDepthMulti(pretrained=False)
     elif config.MODEL == 'DeepLabv3':
         model = DeepLabv3(pretrained=False)
     elif config.MODEL == 'DeepLabv3Depth':

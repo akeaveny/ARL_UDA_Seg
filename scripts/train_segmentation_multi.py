@@ -73,19 +73,20 @@ def train_segmentation_multi(model, target_loader, val_loader, test_loader, writ
             target_img, target_depth, target_gt = images[0, :, :, :].detach().clone(), \
                                                   depths[0, :, :, :].detach().clone(), \
                                                   labels[0, :, :].detach().clone()
+
             # for depth based training
-            if config.NUM_CHANNELS == 1:
+            if config.IS_TRAIN_WITH_DEPTH:
                 images = depths
 
             if i_iter == 0:
                 if config.MODEL == 'DeepLabv3Multi':
                     writer.add_graph(model, images)
-                elif config.MODEL == 'DeepLabv3DepthMulti':
+                elif config.MODEL == 'DeepLabDepthMulti' or config.MODEL == 'DeepLabv3DepthMulti':
                     writer.add_graph(model, [images, depths])
 
             if config.MODEL == 'DeepLabv3Multi':
                 pred_target_aux, pred_target_main = model(images)
-            elif config.MODEL == 'DeepLabv3DepthMulti':
+            elif config.MODEL == 'DeepLabDepthMulti' or config.MODEL == 'DeepLabv3DepthMulti':
                 pred_target_aux, pred_target_main = model(images, depths)
             target_pred = pred_target_main[0, :, :].detach().clone()
 
@@ -134,7 +135,7 @@ def train_segmentation_multi(model, target_loader, val_loader, test_loader, writ
 
                     if config.MODEL == 'DeepLabv3Multi':
                         pred_val_aux, pred_val_main = model(images)
-                    elif config.MODEL == 'DeepLabv3DepthMulti':
+                    elif config.MODEL == 'DeepLabDepthMulti' or config.MODEL == 'DeepLabv3DepthMulti':
                         pred_val_aux, pred_val_main = model(images, depths)
                     val_pred = pred_val_main[0, :, :].detach().clone()
 

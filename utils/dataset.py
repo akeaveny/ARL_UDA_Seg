@@ -283,7 +283,8 @@ class BasicDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint8)
 
         # helper_utils.print_depth_info(depth)
-        # depth = skimage.color.gray2rgb(depth)
+        depth = skimage.color.gray2rgb(depth)
+        depth = np.array(depth, dtype=np.uint8)
         # print(depth.shape)
 
         image = helper_utils.numpy_2_torch(image, mean=self.mean, std=self.std, is_rgb=True)

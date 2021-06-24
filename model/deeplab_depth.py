@@ -196,7 +196,7 @@ class ResNetDepth(nn.Module):
         # Classifier
         ###########################
 
-        self.layer5 = self._make_pred_layer(Classifier_Module, 2048*2, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
+        self.layer5 = self._make_pred_layer(Classifier_Module, 2048 * 2, [6, 12, 18, 24], [6, 12, 18, 24], num_classes)
 
         self._init_weight()
 
@@ -282,20 +282,19 @@ class ResNetDepth(nn.Module):
         ### TODO: Addition or Concat
         ###########################
 
-        x1_cat = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
-        # x += x_depth
+        x_resnet4 = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
 
         ###########################
         # Classifier 1
         ###########################
-        x1 = self.layer5(x1_cat)
+        x_main = self.layer5(x_resnet4)
 
         ###########################
         ###########################
         if upsample:
-            x1 = F.upsample(x1, size=rgb.size()[2:], mode='bilinear', align_corners=True)
+            x_main = F.upsample(x_main, size=rgb.size()[2:], mode='bilinear', align_corners=True)
 
-        return x1
+        return x_main
 
     ###########################
     ###########################
@@ -318,7 +317,7 @@ class ResNetDepth(nn.Module):
             #######################
             # D OR RBG+D INPUT
             #######################
-            if config.NUM_CHANNELS != 3:
+            if config.NUM_CHANNELS == 1:
                 print("not rgb input, pruning saved weights ..")
                 pruned_saved_state_dict = {}
                 for i in saved_state_dict:

@@ -55,10 +55,15 @@ def numpy_2_torch(numpy_img, mean=config.IMG_MEAN, std=config.IMG_STD,
         torch_img = torch_img.transpose((2, 0, 1))      # images are represented as [C, H, W] in torch
 
     if is_depth:
-        torch_img = torch_img[np.newaxis, :, :]
-        mean_ = np.array(mean[-1], dtype=np.float32)
-        std_  = np.array(std[-1], dtype=np.float32)
+        # torch_img = torch_img[np.newaxis, :, :]
+        # mean_ = np.array(mean[-1], dtype=np.float32)
+        # std_  = np.array(std[-1], dtype=np.float32)
+        # torch_img = (torch_img - mean_) / std_
+
+        mean_ = np.array([mean[-1], mean[-1], mean[-1]], dtype=np.float32)
+        std_ = np.array([std[-1], std[-1], std[-1]], dtype=np.float32)
         torch_img = (torch_img - mean_) / std_
+        torch_img = torch_img.transpose((2, 0, 1))  # images are represented as [C, H, W] in torch
 
     return torch_img
 
@@ -73,8 +78,13 @@ def torch_2_numpy(torch_img, mean=config.IMG_MEAN, std=config.IMG_STD,
             numpy_img = numpy_img[:, :, ::-1]               # change to BGR
 
         if is_depth:
-            mean_ = np.array(mean[-1], dtype=np.float32)
-            std_ = np.array(std[-1], dtype=np.float32)
+            # mean_ = np.array(mean[-1], dtype=np.float32)
+            # std_ = np.array(std[-1], dtype=np.float32)
+            # numpy_img = (numpy_img * std_) + mean_
+
+            numpy_img = np.transpose(numpy_img, (1, 2, 0))  # images are represented as [C, H W] in torch
+            mean_ = np.array([mean[-1], mean[-1], mean[-1]], dtype=np.float32)
+            std_ = np.array([std[-1], std[-1], std[-1]], dtype=np.float32)
             numpy_img = (numpy_img * std_) + mean_
 
         return np.array(numpy_img, dtype=np.uint8)
@@ -109,7 +119,8 @@ def cuda_img_2_tensorboard(cuda_img, is_depth=False):
     img = cuda_img.cpu().detach().squeeze()
     # now format for to [BS, C, H W] in tensorboard
     if is_depth:
-        return np.array(img)[np.newaxis, np.newaxis, :, :]
+        # return np.array(img)[np.newaxis, np.newaxis, :, :]
+        return np.array(img)[np.newaxis, :, :, :]
     else:
         return np.array(img)[np.newaxis, :, :, :]
 

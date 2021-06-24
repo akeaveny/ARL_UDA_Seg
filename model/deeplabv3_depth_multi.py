@@ -225,12 +225,12 @@ class ResNetDepth(nn.Module):
         ### TODO: Addition or Concat (see paper ..)
         ###########################
 
-        low_level_feat = torch.cat((low_level_rgb_feat, low_level_depth_feat), dim=1)
+        # low_level_feat = torch.cat((low_level_rgb_feat, low_level_depth_feat), dim=1)
         x_resnet3 = torch.cat((x_resnet3, x_depth_resnet3), dim=1)
         x_resnet4 = torch.cat((x_resnet4, x_depth_resnet4), dim=1)
 
         # x_resnet4, x_resnet3, low_level_feat
-        return x_resnet4, x_resnet3, low_level_feat
+        return x_resnet4, x_resnet3, low_level_rgb_feat
 
     #########################
     #########################
@@ -253,7 +253,7 @@ class ResNetDepth(nn.Module):
         #######################
         # D OR RBG+D INPUT
         #######################
-        if config.NUM_CHANNELS != 3:
+        if config.NUM_CHANNELS == 1:
             print("not rgb input, pruning saved weights ..")
             pruned_pretrain_dict = {}
             for i in pretrain_dict:
@@ -339,7 +339,7 @@ class DeepLabv3DepthMulti(nn.Module):
         self.resnet_rgbd_features = ResNetDepth101(nRGBChannels, nDChannels, os, pretrained=pretrained)
         self.main_features  = int(2048*2)
         self.aux_features   = int(1024*2)
-        self.low_level_feat = int(256*2)
+        self.low_level_feat = int(256*1)
 
         # ASPP
         if os == 16:

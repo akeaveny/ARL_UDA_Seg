@@ -17,27 +17,28 @@ FRAMEWORK Selection:
 
 # TODO: prelim for naming
 FRAMEWORK           = 'SegmentationMulti'
-EXP_DATASET_NAME    = 'UMD_Real_D'
-EXP_NUM             = 'v3_Test'
+EXP_DATASET_NAME    = 'UMD_Real_RGBD_LF'
+EXP_NUM             = 'v8_Deeplabv2'
 
 #######################################
 #######################################
 
 '''
 MODEL Selection:
+'DeepLabDepthMulti'
 'DeepLabv3'
 'DeepLabv3Depth'
 'DeepLabv3Multi'
 'DeepLabv3DepthMulti'
 '''
 
-MODEL = 'DeepLabv3Multi'
+MODEL = 'DeepLabDepthMulti'
 LAMBDA_SEG = 0.1               # 0.1 for AdaptSegNet with lower level features
 
 IS_TRAIN_WITH_DEPTH = True
-NUM_CHANNELS        = 1        # RGB=3, DEPTH=1 or RGB=4
-NUM_RGB_CHANNELS    = NUM_CHANNELS - 1
-NUM_D_CHANNELS      = NUM_CHANNELS - 3
+NUM_CHANNELS        = 4        # RGB=3, DEPTH=1 or RGB=4
+NUM_RGB_CHANNELS    = 3 # NUM_CHANNELS - 1
+NUM_D_CHANNELS      = 3 # NUM_CHANNELS - 3
 
 CONFIDENCE_THRESHOLD = 0.35
 

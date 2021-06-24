@@ -70,9 +70,9 @@ def eval_model(model, test_loader, eval_mIoU=False, eval_Fwb=False, verbose=Fals
                 pred_test_main = model(images)
             elif config.MODEL == 'DeepLabv3Depth':
                 pred_test_main = model(images, depths)
-            elif config.MODEL == 'DeepLabMulti' or config.MODEL == 'DeepLabv3Multi':
+            elif config.MODEL == 'DeepLabv3Multi':
                 pred_test_aux, pred_test_main = model(images)
-            elif config.MODEL == 'DeepLabv3DepthMulti':
+            elif config.MODEL == 'DeepLabDepthMulti' or config.MODEL == 'DeepLabv3DepthMulti':
                 pred_test_aux, pred_test_main = model(images, depths)
             elif config.MODEL == 'DeeplabVGG' or config.MODEL == 'Oracle':
                 pred_test_main = model(images)
